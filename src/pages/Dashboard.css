@@ -1,0 +1,237 @@
+.dashboard-page {
+  min-height: 100vh;
+  padding: 40px 20px;
+  background: var(--bg-primary);
+}
+
+.dashboard-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard-header {
+  text-align: center;
+  margin-bottom: 48px;
+  animation: fadeIn 0.5s ease;
+}
+
+.dashboard-title {
+  font-size: 48px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  letter-spacing: -2px;
+}
+
+.dashboard-subtitle {
+  font-size: 18px;
+  color: var(--text-secondary);
+}
+
+.dashboard-filters {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+
+.filter-button {
+  padding: 10px 24px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.filter-button:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-2px);
+}
+
+.filter-button.active {
+  background: var(--accent);
+  color: var(--bg-primary);
+  border-color: var(--accent);
+  box-shadow: 0 0 20px var(--glow);
+}
+
+.olympiads-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.olympiad-card {
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s ease;
+  animation: fadeIn 0.5s ease;
+}
+
+.olympiad-card:hover {
+  transform: translateY(-8px);
+}
+
+.olympiad-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  gap: 12px;
+}
+
+.olympiad-title {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.3;
+  flex: 1;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.status-active {
+  background: var(--success);
+  color: var(--bg-primary);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+.status-upcoming {
+  background: var(--warning);
+  color: var(--bg-primary);
+  box-shadow: 0 0 10px rgba(255, 255, 0, 0.3);
+}
+
+.status-ended {
+  background: var(--text-tertiary);
+  color: var(--text-primary);
+}
+
+.olympiad-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.olympiad-meta-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.meta-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.meta-value {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.olympiad-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.date-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.date-label {
+  color: var(--text-secondary);
+}
+
+.date-value {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.olympiad-action {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.action-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  display: block;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.olympiad-card:hover .action-text {
+  text-shadow: 0 0 10px var(--glow);
+  transform: translateX(5px);
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  animation: fadeIn 0.5s ease;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  font-size: 24px;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.empty-state p {
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .dashboard-title {
+    font-size: 36px;
+  }
+  
+  .olympiads-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .olympiad-card-header {
+    flex-direction: column;
+  }
+}
+

@@ -1,0 +1,267 @@
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade out animation */
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Glow pulse animation */
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px var(--glow);
+  }
+  50% {
+    box-shadow: 0 0 40px var(--glow), 0 0 60px var(--glow);
+  }
+}
+
+/* Slide in from right */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Slide in from left */
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Slide up */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Scale in */
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Shimmer effect */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* Button hover effect */
+.button-primary {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--text-primary);
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.button-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+  transition: left 0.3s ease;
+  z-index: -1;
+}
+
+.button-primary:hover::before {
+  left: 0;
+}
+
+.button-primary:hover {
+  color: var(--bg-primary);
+  box-shadow: 0 0 20px var(--glow);
+  transform: translateY(-2px);
+}
+
+.button-primary:active {
+  transform: translateY(0);
+}
+
+.button-secondary {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.button-secondary:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 0 15px var(--glow);
+  transform: translateY(-2px);
+}
+
+.button-danger {
+  background: transparent;
+  border: 1px solid var(--error);
+  color: var(--error);
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.button-danger:hover {
+  background: var(--error);
+  color: var(--bg-primary);
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+}
+
+/* Card animation */
+.card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  transition: all 0.3s ease;
+  animation: fadeIn 0.5s ease;
+}
+
+.card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 30px var(--glow);
+  transform: translateY(-5px);
+}
+
+.card-interactive {
+  cursor: pointer;
+}
+
+/* Text glow effect */
+.text-glow {
+  text-shadow: 0 0 10px var(--glow), 0 0 20px var(--glow);
+}
+
+.text-glow-strong {
+  text-shadow: 0 0 20px var(--glow-strong), 0 0 40px var(--glow-strong);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(90deg, var(--text-primary), var(--text-secondary), var(--text-primary));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
+}
+
+/* Pulse animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Bounce animation */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.bounce {
+  animation: bounce 1s ease-in-out infinite;
+}
+
+/* Notification slide in */
+@keyframes notificationSlideIn {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.notification-enter {
+  animation: notificationSlideIn 0.3s ease;
+}
+
+/* Timer countdown animation */
+@keyframes timerPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.timer-warning {
+  animation: timerPulse 1s ease-in-out infinite;
+  color: var(--warning);
+}
+
+.timer-danger {
+  animation: timerPulse 0.5s ease-in-out infinite;
+  color: var(--error);
+}
+

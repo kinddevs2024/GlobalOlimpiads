@@ -1,0 +1,157 @@
+.owner-panel-page {
+  min-height: 100vh;
+  padding: 40px 20px;
+  background: var(--bg-primary);
+}
+
+.owner-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.owner-header {
+  margin-bottom: 40px;
+  animation: fadeIn 0.5s ease;
+}
+
+.owner-title {
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: -2px;
+}
+
+.analytics-section,
+.users-section {
+  margin-bottom: 40px;
+  animation: fadeIn 0.5s ease;
+}
+
+.analytics-section h2,
+.users-section h2 {
+  font-size: 28px;
+  margin-bottom: 24px;
+  font-weight: 600;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+}
+
+.analytics-card {
+  text-align: center;
+  padding: 32px;
+  transition: all 0.3s ease;
+}
+
+.analytics-card:hover {
+  transform: translateY(-5px);
+}
+
+.analytics-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.analytics-value {
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.users-table {
+  overflow: hidden;
+}
+
+.table-header {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr 1.5fr;
+  gap: 16px;
+  padding: 20px;
+  background: var(--bg-tertiary);
+  border-bottom: 2px solid var(--border);
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.table-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr 1.5fr;
+  gap: 16px;
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+  transition: all 0.3s ease;
+}
+
+.table-row:hover {
+  background: var(--bg-tertiary);
+}
+
+.table-cell {
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+}
+
+.role-badge {
+  padding: 4px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.role-select {
+  padding: 6px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.role-select:hover {
+  border-color: var(--border-hover);
+}
+
+.role-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 10px var(--glow);
+}
+
+@media (max-width: 768px) {
+  .owner-title {
+    font-size: 36px;
+  }
+  
+  .table-header,
+  .table-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

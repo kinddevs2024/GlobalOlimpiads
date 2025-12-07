@@ -1,0 +1,105 @@
+.navbar {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 0;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  animation: fadeIn 0.5s ease;
+}
+
+.navbar-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.navbar-logo {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  transition: all 0.3s ease;
+}
+
+.navbar-logo:hover {
+  transform: scale(1.05);
+}
+
+.navbar-menu {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.navbar-link {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.navbar-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: var(--accent);
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+}
+
+.navbar-link:hover::after {
+  width: 80%;
+}
+
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+.navbar-username {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.navbar-role {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.navbar-logout {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .navbar-container {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .navbar-menu {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+  
+  .navbar-user {
+    border: none;
+    padding: 0;
+  }
+}
+

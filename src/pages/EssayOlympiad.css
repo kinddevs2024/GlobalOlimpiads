@@ -1,0 +1,62 @@
+.essay-olympiad-page {
+  min-height: 100vh;
+  padding: 20px;
+  background: var(--bg-primary);
+  padding-right: 240px;
+}
+
+.essay-question-card {
+  margin-bottom: 24px;
+}
+
+.essay-editor {
+  margin-top: 24px;
+}
+
+.essay-textarea {
+  width: 100%;
+  min-height: 400px;
+  font-family: 'Inter', monospace;
+  font-size: 15px;
+  line-height: 1.8;
+  resize: vertical;
+  padding: 20px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+.essay-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 20px var(--glow);
+}
+
+.essay-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.essay-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.word-count,
+.char-count {
+  font-weight: 600;
+}
+
+@media (max-width: 1024px) {
+  .essay-olympiad-page {
+    padding-right: 20px;
+  }
+}
+

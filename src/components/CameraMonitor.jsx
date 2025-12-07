@@ -64,8 +64,9 @@ const CameraMonitor = ({ olympiadId, userId }) => {
           if (blob) {
             const formData = new FormData();
             formData.append('image', blob, `capture-${Date.now()}.jpg`);
+            formData.append('captureType', 'camera'); // Backend expects 'captureType'
             formData.append('olympiadId', olympiadId);
-            formData.append('userId', userId);
+            // userId is not needed - backend gets it from JWT token
 
             try {
               await olympiadAPI.uploadCameraCapture(formData);

@@ -76,3 +76,52 @@ export const removeUser = () => {
   localStorage.removeItem('user');
 };
 
+// Sanitize string for use in filenames (remove special characters, replace spaces with dashes)
+export const sanitizeForFilename = (str) => {
+  if (!str) return '';
+  return str
+    .toString()
+    .trim()
+    .replace(/[^a-z0-9\s-]/gi, '') // Remove special characters
+    .replace(/\s+/g, '-') // Replace spaces with dashes
+    .replace(/-+/g, '-') // Replace multiple dashes with single dash
+    .toLowerCase()
+    .substring(0, 50); // Limit length
+};
+
+// Format date and time for filename (YYYY-MM-DD_HH-MM-SS)
+export const formatDateTimeForFilename = (date = new Date()) => {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
+};
+
+// Format date only for filename (YYYY-MM-DD)
+export const formatDateForFilename = (date = new Date()) => {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Generate video filename: {userId}_{date}_{olympiad-name}_{type}.webm
+export const generateVideoFilename = (userId, olympiadTitle, type, date = new Date()) => {
+  const dateOnly = formatDateForFilename(date);
+  const sanitizedTitle = sanitizeForFilename(olympiadTitle);
+  const sanitizedUserId = String(userId).replace(/[^a-z0-9-_]/gi, ''); // Sanitize userId
+  return `${sanitizedUserId}_${dateOnly}_${sanitizedTitle}_${type}.webm`;
+};
+
+// Generate exit screenshot filename: {olympiad-name}_{date}_{time}_exit-{type}.jpg
+export const generateExitScreenshotFilename = (olympiadTitle, type, date = new Date()) => {
+  const sanitizedTitle = sanitizeForFilename(olympiadTitle);
+  const dateTime = formatDateTimeForFilename(date);
+  return `${sanitizedTitle}_${dateTime}_exit-${type}.jpg`;
+};
+

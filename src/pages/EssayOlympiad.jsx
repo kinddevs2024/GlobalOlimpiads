@@ -23,6 +23,7 @@ const EssayOlympiad = () => {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
 
   useEffect(() => {
     fetchOlympiad();
@@ -114,9 +115,26 @@ const EssayOlympiad = () => {
 
   return (
     <div className="essay-olympiad-page">
-      <ProctoringMonitor olympiadId={id} userId={user?._id} />
+      <ProctoringMonitor 
+        olympiadId={id} 
+        userId={user?._id}
+        olympiadTitle={olympiad?.title}
+        onRecordingStatusChange={setIsRecording}
+      />
       
       <div className="olympiad-container">
+        {/* Blocking overlay when not recording */}
+        {!isRecording && (
+          <div className="recording-block-overlay">
+            <div className="blocking-message card">
+              <h2>⏸️ Recording Not Active</h2>
+              <p>Please wait for camera and screen recording to start.</p>
+              <p className="blocking-hint">
+                You cannot answer questions until recording is active.
+              </p>
+            </div>
+          </div>
+        )}
         <div className="olympiad-header">
           <h1 className="olympiad-title">{olympiad?.title}</h1>
           <Timer 
@@ -144,6 +162,7 @@ const EssayOlympiad = () => {
               key={index}
               className={`nav-button ${index === currentQuestionIndex ? 'active' : ''} ${answers[questions[index]._id] ? 'answered' : ''}`}
               onClick={() => setCurrentQuestionIndex(index)}
+              disabled={!isRecording || submitted}
             >
               {index + 1}
             </button>
@@ -169,7 +188,7 @@ const EssayOlympiad = () => {
                 value={currentAnswer}
                 onChange={(e) => handleAnswerChange(currentQuestion._id, e.target.value)}
                 placeholder="Write your essay here..."
-                disabled={submitted}
+                disabled={!isRecording || submitted}
                 rows={20}
               />
               <div className="essay-stats">
@@ -184,7 +203,7 @@ const EssayOlympiad = () => {
           <button
             className="button-secondary"
             onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
-            disabled={currentQuestionIndex === 0}
+            disabled={!isRecording || currentQuestionIndex === 0 || submitted}
           >
             ← Previous
           </button>
@@ -193,6 +212,7 @@ const EssayOlympiad = () => {
             <button 
               className="button-primary" 
               onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
+              disabled={!isRecording || submitted}
             >
               Next →
             </button>
@@ -200,7 +220,7 @@ const EssayOlympiad = () => {
             <button 
               className="button-primary" 
               onClick={handleSubmit}
-              disabled={submitted}
+              disabled={!isRecording || submitted}
             >
               Submit Essay
             </button>

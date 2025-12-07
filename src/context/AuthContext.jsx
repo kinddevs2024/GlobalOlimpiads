@@ -85,6 +85,29 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginWithGoogle = async (googleToken) => {
+    try {
+      const response = await authAPI.loginWithGoogle(googleToken);
+      const { token, user } = response.data;
+      
+      setToken(token);
+      setUser(user);
+      setUserState(user);
+      setIsAuthenticated(true);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Google login error:', error);
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          (error.code === 'ERR_NETWORK' ? 'Cannot connect to server. Make sure backend is running.' : 'Google login failed');
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  };
+
   const logout = () => {
     removeToken();
     removeUser();
@@ -98,6 +121,7 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated,
     login,
     register,
+    loginWithGoogle,
     logout
   };
 

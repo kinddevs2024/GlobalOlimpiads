@@ -98,6 +98,36 @@ Authorization: Bearer <token>
 
 ---
 
+### POST `/api/auth/google`
+
+Login or register user with Google OAuth.
+
+**Request Body:**
+
+```json
+{
+  "token": "google_access_token_here"
+}
+```
+
+**Response:**
+
+```json
+{
+  "token": "jwt_token_here",
+  "user": {
+    "_id": "user_id",
+    "email": "user@example.com",
+    "name": "User Name",
+    "role": "student"
+  }
+}
+```
+
+**Note:** The backend should verify the Google access token using the Google Client Secret and then create/login the user.
+
+---
+
 ## 🏆 Olympiad Endpoints (Public/Student)
 
 ### GET `/api/olympiads`
@@ -208,9 +238,9 @@ Authorization: Bearer <token>
 
 ---
 
-### GET `/api/olympiads/:id/results`
+### GET `/api/olympiads/results`
 
-Get results for a specific olympiad.
+Get results for a specific olympiad. Returns the user's specific result, top 5 participants, and total participants count.
 
 **Headers:**
 
@@ -218,26 +248,82 @@ Get results for a specific olympiad.
 Authorization: Bearer <token>
 ```
 
+**Query Parameters:**
+
+- `olympiadId` (required): The ID of the olympiad
+- `userId` (optional): The ID of the user
+
+**Example Request:**
+
+```
+GET /api/olympiads/results?olympiadId=olympiad_id&userId=user_id
+```
+
 **Response:**
 
 ```json
 {
+  "success": true,
   "olympiadId": "olympiad_id",
-  "score": 85,
-  "totalPoints": 100,
-  "percentage": 85,
-  "rank": 5,
-  "submittedAt": "2024-02-01T11:30:00.000Z",
-  "answers": {
-    "question_id_1": "option_a",
-    "question_id_2": "option_b"
+  "olympiadTitle": "Math Olympiad 2024",
+  "olympiadType": "test",
+  "userResult": {
+    "rank": 3,
+    "position": "🥉 3rd Place",
+    "score": 85,
+    "totalPoints": 100,
+    "percentage": 85,
+    "submittedAt": "2025-12-07T21:13:39.076Z",
+    "answers": {
+      "question_id_1": "option_a",
+      "question_id_2": "option_b"
+    },
+    "correctAnswers": {
+      "question_id_1": "option_a",
+      "question_id_2": "option_c"
+    },
+    "submissionDetails": {}
   },
-  "correctAnswers": {
-    "question_id_1": "option_a",
-    "question_id_2": "option_c"
-  }
+  "topFive": [
+    {
+      "rank": 1,
+      "position": "🥇 1st Place",
+      "userId": "user_id_1",
+      "userName": "John Doe",
+      "userEmail": "john@example.com",
+      "score": 95,
+      "totalPoints": 100,
+      "percentage": 95,
+      "completedAt": "2024-02-01T11:30:00.000Z"
+    },
+    {
+      "rank": 2,
+      "position": "🥈 2nd Place",
+      "userId": "user_id_2",
+      "userName": "Jane Smith",
+      "userEmail": "jane@example.com",
+      "score": 90,
+      "totalPoints": 100,
+      "percentage": 90,
+      "completedAt": "2024-02-01T11:25:00.000Z"
+    },
+    {
+      "rank": 3,
+      "position": "🥉 3rd Place",
+      "userId": "user_id_3",
+      "userName": "Bob Johnson",
+      "userEmail": "bob@example.com",
+      "score": 85,
+      "totalPoints": 100,
+      "percentage": 85,
+      "completedAt": "2024-02-01T11:20:00.000Z"
+    }
+  ],
+  "totalParticipants": 10
 }
 ```
+
+**Note:** The endpoint returns the requesting user's result (`userResult`), the top 5 participants (`topFive`), and the total number of participants in a single response. The `position` field includes emoji and text (e.g., "🥇 1st Place").
 
 ---
 

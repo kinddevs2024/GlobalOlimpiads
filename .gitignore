@@ -42,3 +42,8 @@ coverage/
 .temp/
 .tmp/
 
+# Security - Google OAuth Credentials (NEVER commit these!)
+BACKEND_GOOGLE_CREDENTIALS.json
+*client_secret*.json
+*credentials*.json
+

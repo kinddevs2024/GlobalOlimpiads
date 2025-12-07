@@ -40,6 +40,7 @@ api.interceptors.response.use(
 export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
+  loginWithGoogle: (token) => api.post('/auth/google', { token }),
   getMe: () => api.get('/auth/me')
 };
 
@@ -48,10 +49,58 @@ export const olympiadAPI = {
   getAll: () => api.get('/olympiads'),
   getById: (id) => api.get(`/olympiads/${id}`),
   submit: (id, data) => api.post(`/olympiads/${id}/submit`, data),
-  getResults: (id) => api.get(`/olympiads/${id}/results`),
+  getResults: (olympiadId, userId = null) => {
+    // Backend expects: GET /api/olympiads/results?olympiadId=xxx&userId=xxx
+    // Backend returns full list of results for that olympiad
+    // Frontend filters the list to find the specific person's result
+    const params = new URLSearchParams();
+    if (olympiadId) params.append('olympiadId', olympiadId);
+    if (userId) params.append('userId', userId);
+    const query = params.toString();
+    return api.get(`/olympiads/results${query ? `?${query}` : ''}`);
+  },
   uploadCameraCapture: (formData) => {
     // formData should include: olympiadId, captureType ('camera' | 'screen'), image (File)
     return api.post('/olympiads/camera-capture', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+  uploadBatchCaptures: (formData) => {
+    // formData should include: olympiadId, images (multiple File objects)
+    // Backend expects batch upload of accumulated images
+    return api.post('/olympiads/camera-capture/batch', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+  uploadVideo: (formData, onUploadProgress) => {
+    // formData should include: olympiadId, video (File object)
+    // Upload the recorded video file to backend
+    return api.post('/olympiads/upload-video', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      onUploadProgress: (progressEvent) => {
+        if (onUploadProgress && progressEvent.total) {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          onUploadProgress(percentCompleted);
+        }
+      }
+    });
+  },
+  stopRecording: (olympiadId) => {
+    // Notify backend to convert accumulated images to MP4 video
+    return api.post(`/olympiads/${olympiadId}/stop-recording`);
+  },
+  uploadExitScreenshot: (formData) => {
+    // formData should include: olympiadId, cameraImage, screenImage, exitType (tab_switch/close/navigate)
+    // Used when user leaves the page - captures last frame before exit
+    return api.post('/olympiads/exit-screenshot', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }

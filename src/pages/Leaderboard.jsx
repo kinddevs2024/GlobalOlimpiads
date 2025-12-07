@@ -24,7 +24,14 @@ const Leaderboard = () => {
   }, [id, on]);
 
   const fetchLeaderboard = async () => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    
     try {
+      // For leaderboard, we only need olympiadId to get all results
+      // Backend returns full list of results for that olympiad
       const response = await olympiadAPI.getResults(id);
       setResults(response.data.results || []);
       setOlympiad(response.data.olympiad);

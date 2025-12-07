@@ -58,10 +58,31 @@ const StartOlympiad = () => {
     }
   };
 
-  const handleStart = async () => {
-    if (!olympiad) return;
+  const handleStart = async (e) => {
+    // Prevent any default behavior
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    console.log("🚀 Start button clicked", {
+      hasOlympiad: !!olympiad,
+      consentGiven,
+      starting,
+      olympiadStatus: olympiad?.status,
+    });
+
+    if (!olympiad) {
+      console.error("❌ Olympiad data is missing");
+      setNotification({
+        message: "Olympiad data not loaded. Please refresh the page.",
+        type: "error",
+      });
+      return;
+    }
 
     if (!consentGiven) {
+      console.warn("⚠️ Consent not given");
       setNotification({
         message: "Please read and accept the terms to continue",
         type: "error",
@@ -71,57 +92,68 @@ const StartOlympiad = () => {
 
     setStarting(true);
 
-    // Check olympiad status
-    const isUpcomingCheck = isOlympiadUpcoming(olympiad.startTime);
-    const isActiveCheck = isOlympiadActive(
-      olympiad.startTime,
-      olympiad.endTime
-    );
-    const isEndedCheck = isOlympiadEnded(olympiad.endTime);
+    try {
+      // Check olympiad status
+      const isUpcomingCheck = isOlympiadUpcoming(olympiad.startTime);
+      const isActiveCheck = isOlympiadActive(
+        olympiad.startTime,
+        olympiad.endTime
+      );
+      const isEndedCheck = isOlympiadEnded(olympiad.endTime);
 
-    // Validate olympiad is active
-    if (!isActiveCheck) {
-      if (isUpcomingCheck) {
+      console.log("📅 Time validation:", {
+        isUpcoming: isUpcomingCheck,
+        isActive: isActiveCheck,
+        isEnded: isEndedCheck,
+        startTime: olympiad.startTime,
+        endTime: olympiad.endTime,
+        currentTime: new Date().toISOString(),
+      });
+
+      // Validate olympiad is active
+      if (!isActiveCheck) {
+        if (isUpcomingCheck) {
+          setNotification({
+            message:
+              "Olympiad has not started yet. Please wait for the start time.",
+            type: "error",
+          });
+          setStarting(false);
+          return;
+        }
+        if (isEndedCheck) {
+          setNotification({
+            message: "Olympiad has ended. You cannot start it anymore.",
+            type: "error",
+          });
+          setStarting(false);
+          return;
+        }
+      }
+
+      // Validate olympiad has questions
+      if (!olympiad.questions || olympiad.questions.length === 0) {
         setNotification({
           message:
-            "Olympiad has not started yet. Please wait for the start time.",
+            "This olympiad has no questions yet. Please contact the administrator.",
           type: "error",
         });
         setStarting(false);
         return;
       }
-      if (isEndedCheck) {
+
+      // Validate olympiad is published
+      if (olympiad.status && olympiad.status !== "published") {
         setNotification({
-          message: "Olympiad has ended. You cannot start it anymore.",
+          message: "This olympiad is not available for participation.",
           type: "error",
         });
         setStarting(false);
         return;
       }
-    }
 
-    // Validate olympiad has questions
-    if (!olympiad.questions || olympiad.questions.length === 0) {
-      setNotification({
-        message:
-          "This olympiad has no questions yet. Please contact the administrator.",
-        type: "error",
-      });
-      setStarting(false);
-      return;
-    }
+      console.log("✅ All validations passed, starting olympiad...");
 
-    // Validate olympiad is published
-    if (olympiad.status && olympiad.status !== "published") {
-      setNotification({
-        message: "This olympiad is not available for participation.",
-        type: "error",
-      });
-      setStarting(false);
-      return;
-    }
-
-    try {
       // Store start information in localStorage
       const startTime = new Date().toISOString();
       localStorage.setItem(`olympiad_${id}_started`, "true");
@@ -138,14 +170,17 @@ const StartOlympiad = () => {
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Navigate to the olympiad
-      if (olympiad.type === "essay") {
-        navigate(`/olympiad/${id}/essay`);
-      } else {
-        navigate(`/olympiad/${id}`);
-      }
+      const targetPath =
+        olympiad.type === "essay" ? `/olympiad/${id}/essay` : `/olympiad/${id}`;
+
+      console.log("🧭 Navigating to:", targetPath);
+      navigate(targetPath);
     } catch (error) {
+      console.error("❌ Error starting olympiad:", error);
       setNotification({
-        message: "Failed to start olympiad. Please try again.",
+        message:
+          error.message ||
+          "Failed to start olympiad. Please try again or contact support.",
         type: "error",
       });
       setStarting(false);
@@ -388,6 +423,11 @@ const StartOlympiad = () => {
                     olympiad and will follow all guidelines.
                   </span>
                 </label>
+                {!consentGiven && (
+                  <p className="consent-hint">
+                    ⚠️ Please check the box above to enable the Start button
+                  </p>
+                )}
               </div>
 
               {/* Action Buttons */}
@@ -396,11 +436,17 @@ const StartOlympiad = () => {
                   ← Back to Dashboard
                 </Link>
                 <button
+                  type="button"
                   className="button-primary start-button"
                   onClick={handleStart}
-                  disabled={!consentGiven || starting}
+                  disabled={!consentGiven || starting || !isActive}
+                  aria-disabled={!consentGiven || starting || !isActive}
                 >
-                  {starting ? "Starting..." : "Start Olympiad →"}
+                  {starting
+                    ? "Starting..."
+                    : !consentGiven
+                    ? "Accept Terms to Start →"
+                    : "Start Olympiad →"}
                 </button>
               </div>
             </>

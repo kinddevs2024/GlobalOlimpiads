@@ -49,29 +49,60 @@ export const olympiadAPI = {
   getById: (id) => api.get(`/olympiads/${id}`),
   submit: (id, data) => api.post(`/olympiads/${id}/submit`, data),
   getResults: (id) => api.get(`/olympiads/${id}/results`),
-  uploadCameraCapture: (formData) => api.post('/olympiads/camera-capture', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  })
+  uploadCameraCapture: (formData) => {
+    // formData should include: olympiadId, captureType ('camera' | 'screen'), image (File)
+    return api.post('/olympiads/camera-capture', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  }
 };
 
 // Admin endpoints
 export const adminAPI = {
+  // Olympiad management
+  getAllOlympiads: () => api.get('/admin/olympiads'),
+  getOlympiadById: (id) => api.get(`/admin/olympiads/${id}`),
   createOlympiad: (data) => api.post('/admin/olympiads', data),
   updateOlympiad: (id, data) => api.put(`/admin/olympiads/${id}`, data),
   deleteOlympiad: (id) => api.delete(`/admin/olympiads/${id}`),
+  
+  // Question management
+  getQuestions: (olympiadId) => {
+    const url = olympiadId 
+      ? `/admin/questions?olympiadId=${olympiadId}`
+      : '/admin/questions';
+    return api.get(url);
+  },
   addQuestion: (data) => api.post('/admin/questions', data),
-  getSubmissions: (olympiadId) => api.get(`/admin/submissions?olympiadId=${olympiadId}`),
+  
+  // User management
   getUsers: () => api.get('/admin/users'),
+  
+  // Submissions
+  getSubmissions: (olympiadId, userId) => {
+    const params = new URLSearchParams();
+    if (olympiadId) params.append('olympiadId', olympiadId);
+    if (userId) params.append('userId', userId);
+    const query = params.toString();
+    return api.get(`/admin/submissions${query ? `?${query}` : ''}`);
+  },
+  
+  // Camera captures
   getCameraCaptures: (olympiadId) => api.get(`/admin/camera-captures/${olympiadId}`)
 };
 
 // Owner endpoints
 export const ownerAPI = {
   getAnalytics: () => api.get('/owner/analytics'),
-  changeUserRole: (userId, role) => api.post(`/owner/users/${userId}/role`, { role }),
-  getReports: () => api.get('/owner/reports')
+  changeUserRole: (userId, role) => api.put(`/owner/users/${userId}/role`, { role }),
+  getReports: (olympiadId) => {
+    const url = olympiadId 
+      ? `/owner/reports?olympiadId=${olympiadId}`
+      : '/owner/reports';
+    return api.get(url);
+  }
 };
 
 export default api;

@@ -1,7 +1,7 @@
 // Use proxy in development, full URL in production
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 
-  (import.meta.env.DEV ? '/api' : 'http://localhost:5000/api');
-export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+  (import.meta.env.DEV ? '/api' : 'http://localhost:3000/api');
+export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
 export const USER_ROLES = {
   STUDENT: 'student',
@@ -25,6 +25,14 @@ export const SUBJECTS = {
   SCIENCE: 'science',
   PHYSICS: 'physics',
   CHEMISTRY: 'chemistry'
+};
+
+export const OLYMPIAD_STATUS = {
+  DRAFT: 'draft',
+  PUBLISHED: 'published',
+  UNPUBLISHED: 'unpublished',
+  ACTIVE: 'active',
+  COMPLETED: 'completed'
 };
 
 export const CAMERA_CAPTURE_INTERVAL = 30000; // 30 seconds

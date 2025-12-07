@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { olympiadAPI } from '../services/api';
 import { formatDate, isOlympiadActive, isOlympiadUpcoming, isOlympiadEnded } from '../utils/helpers';
-import { OLYMPIAD_TYPES } from '../utils/constants';
+import { OLYMPIAD_TYPES, USER_ROLES } from '../utils/constants';
+import { useAuth } from '../context/AuthContext';
 import './Dashboard.css';
 
 const Dashboard = () => {
+  const { user } = useAuth();
   const [olympiads, setOlympiads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, active, upcoming, ended
@@ -26,8 +28,14 @@ const Dashboard = () => {
   };
 
   const getFilteredOlympiads = () => {
-    if (filter === 'all') return olympiads;
-    return olympiads.filter(olympiad => {
+    // Show all olympiads to owners and admins, only published to students
+    const isAdminOrOwner = user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.OWNER;
+    const visibleOlympiads = isAdminOrOwner 
+      ? olympiads 
+      : olympiads.filter(olympiad => olympiad.status === 'published');
+    
+    if (filter === 'all') return visibleOlympiads;
+    return visibleOlympiads.filter(olympiad => {
       if (filter === 'active') return isOlympiadActive(olympiad.startTime, olympiad.endTime);
       if (filter === 'upcoming') return isOlympiadUpcoming(olympiad.startTime);
       if (filter === 'ended') return isOlympiadEnded(olympiad.endTime);
@@ -101,7 +109,7 @@ const Dashboard = () => {
             filteredOlympiads.map((olympiad) => (
               <Link
                 key={olympiad._id}
-                to={olympiad.type === 'essay' ? `/olympiad/${olympiad._id}/essay` : `/olympiad/${olympiad._id}`}
+                to={`/olympiad/${olympiad._id}/start`}
                 className="olympiad-card card card-interactive"
               >
                 <div className="olympiad-card-header">

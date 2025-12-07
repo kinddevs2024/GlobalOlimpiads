@@ -7,6 +7,7 @@ import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import TestOlympiad from './pages/TestOlympiad';
 import EssayOlympiad from './pages/EssayOlympiad';
+import StartOlympiad from './pages/StartOlympiad';
 import Leaderboard from './pages/Leaderboard';
 import Results from './pages/Results';
 import AdminPanel from './pages/AdminPanel';
@@ -30,6 +31,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      
+      <Route
+        path="/olympiad/:id/start"
+        element={
+          <ProtectedRoute>
+            <StartOlympiad />
           </ProtectedRoute>
         }
       />

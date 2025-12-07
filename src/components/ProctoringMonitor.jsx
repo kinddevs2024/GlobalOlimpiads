@@ -159,10 +159,9 @@ const ProctoringMonitor = ({ olympiadId, userId }) => {
         try {
           const formData = new FormData();
           formData.append('image', capture.blob, capture.filename);
-          formData.append('type', capture.type);
+          formData.append('captureType', capture.type); // Backend expects 'captureType'
           formData.append('olympiadId', olympiadId);
-          formData.append('userId', userId);
-          formData.append('timestamp', new Date().toISOString());
+          // userId is not needed - backend gets it from JWT token
 
           await olympiadAPI.uploadCameraCapture(formData);
         } catch (uploadError) {

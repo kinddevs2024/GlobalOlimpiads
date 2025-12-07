@@ -44,6 +44,14 @@ const TestOlympiad = () => {
       const olympiadData = response.data;
       setOlympiad(olympiadData);
       setQuestions(olympiadData.questions || []);
+
+      // Check if user has gone through start page (optional check)
+      const started = localStorage.getItem(`olympiad_${id}_started`);
+      if (!started && olympiadData.status === 'published') {
+        // Optional: redirect to start page if not started
+        // Uncomment if you want to force users to go through start page
+        // navigate(`/olympiad/${id}/start`);
+      }
       
       const remaining = getTimeRemaining(olympiadData.endTime);
       setTimeRemaining(remaining);

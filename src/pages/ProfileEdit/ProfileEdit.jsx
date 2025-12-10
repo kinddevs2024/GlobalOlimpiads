@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { authAPI } from '../../services/api';
-import { USER_ROLES } from '../../utils/constants';
-import NotificationToast from '../../components/NotificationToast';
-import './ProfileEdit.css';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { authAPI } from "../../services/api";
+import { USER_ROLES } from "../../utils/constants";
+import NotificationToast from "../../components/NotificationToast";
+import "./ProfileEdit.css";
 
 const ProfileEdit = () => {
   const { user, setUser } = useAuth();
@@ -12,17 +12,17 @@ const ProfileEdit = () => {
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(null);
   const [formData, setFormData] = useState({
-    name: '',
-    firstName: '',
-    secondName: '',
-    email: '',
-    gmail: '',
-    tel: '',
-    address: '',
-    schoolName: '',
-    schoolId: '',
-    dateBorn: '',
-    gender: '',
+    name: "",
+    firstName: "",
+    secondName: "",
+    email: "",
+    gmail: "",
+    tel: "",
+    address: "",
+    schoolName: "",
+    schoolId: "",
+    dateBorn: "",
+    gender: "",
     userLogo: null,
   });
 
@@ -30,47 +30,72 @@ const ProfileEdit = () => {
     if (user) {
       // Format date for date input (YYYY-MM-DD)
       const formatDateForInput = (dateString) => {
-        if (!dateString) return '';
+        if (!dateString) return "";
         const date = new Date(dateString);
         const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
         return `${year}-${month}-${day}`;
       };
 
+      // Parse name into firstName and secondName if needed
+      let firstName = user.firstName || "";
+      let secondName = user.secondName || "";
+      const name = user.name || "";
+
+      // If we have name but no firstName/secondName, try to split it
+      if (name && !firstName && !secondName) {
+        const nameParts = name.trim().split(/\s+/);
+        firstName = nameParts[0] || "";
+        secondName = nameParts.slice(1).join(" ") || "";
+      }
+
       setFormData({
-        name: user.name || '',
-        firstName: user.firstName || '',
-        secondName: user.secondName || '',
-        email: user.email || '',
-        gmail: user.gmail || '',
-        tel: user.tel || '',
-        address: user.address || '',
-        schoolName: user.schoolName || '',
-        schoolId: user.schoolId || '',
+        name: name,
+        firstName: firstName,
+        secondName: secondName,
+        email: user.email || "",
+        gmail: user.gmail || "",
+        tel: user.tel || "",
+        address: user.address || "",
+        schoolName: user.schoolName || "",
+        schoolId: user.schoolId || "",
         dateBorn: formatDateForInput(user.dateBorn),
-        gender: user.gender || '',
+        gender: user.gender || "",
         userLogo: null,
       });
     }
   }, [user]);
 
   const handleChange = (e) => {
-    if (e.target.type === 'file') {
+    if (e.target.type === "file") {
       setFormData({
         ...formData,
         [e.target.name]: e.target.files[0] || null,
       });
     } else {
-      setFormData({
+      const newFormData = {
         ...formData,
         [e.target.name]: e.target.value,
-      });
+      };
+
+      // Auto-update name field when firstName or secondName changes
+      if (e.target.name === "firstName" || e.target.name === "secondName") {
+        const firstName =
+          e.target.name === "firstName" ? e.target.value : formData.firstName;
+        const secondName =
+          e.target.name === "secondName" ? e.target.value : formData.secondName;
+        newFormData.name =
+          `${firstName || ""} ${secondName || ""}`.trim() || newFormData.name;
+      }
+
+      setFormData(newFormData);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Form submitted!");
     setLoading(true);
     setNotification(null);
 
@@ -81,15 +106,20 @@ const ProfileEdit = () => {
       if (formData.userLogo) {
         try {
           const logoResponse = await authAPI.uploadLogo(formData.userLogo);
-          logoUrl = logoResponse.data.logoUrl || logoResponse.data.url || logoResponse.data.userLogo;
+          logoUrl =
+            logoResponse.data.logoUrl ||
+            logoResponse.data.url ||
+            logoResponse.data.userLogo;
           setNotification({
-            message: 'Logo uploaded successfully!',
-            type: 'success',
+            message: "Logo uploaded successfully!",
+            type: "success",
           });
         } catch (logoError) {
           setNotification({
-            message: logoError.response?.data?.message || 'Failed to upload logo. Please try again.',
-            type: 'error',
+            message:
+              logoError.response?.data?.message ||
+              "Failed to upload logo. Please try again.",
+            type: "error",
           });
           setLoading(false);
           return;
@@ -97,45 +127,140 @@ const ProfileEdit = () => {
       }
 
       // Then update profile with logo URL
-      const updateData = new FormData();
-      updateData.append('name', formData.name);
-      updateData.append('firstName', formData.firstName);
-      updateData.append('secondName', formData.secondName);
-      updateData.append('email', formData.email);
-      updateData.append('gmail', formData.gmail);
-      updateData.append('tel', formData.tel);
-      updateData.append('address', formData.address);
-      // Only append school fields if user is a student
-      if (user.role === USER_ROLES.STUDENT) {
-        updateData.append('schoolName', formData.schoolName);
-        updateData.append('schoolId', formData.schoolId);
-      }
-      updateData.append('dateBorn', formData.dateBorn);
-      updateData.append('gender', formData.gender);
-      
-      // Append logo URL if we have one
-      if (logoUrl) {
-        updateData.append('userLogo', logoUrl);
+      // Backend expects 'name' field, not 'firstName' and 'secondName'
+      // Construct name from firstName and secondName if name is empty
+      const fullName =
+        formData.name.trim() ||
+        `${formData.firstName || ""} ${formData.secondName || ""}`.trim();
+
+      if (!fullName) {
+        setNotification({
+          message: "Name is required",
+          type: "error",
+        });
+        setLoading(false);
+        return;
       }
 
-      const response = await authAPI.updateProfile(updateData);
+      const updateData = new FormData();
+
+      // Always append required fields
+      updateData.append("name", fullName);
+      updateData.append("email", formData.email);
+      updateData.append("firstName", formData.firstName || "");
+      updateData.append("secondName", formData.secondName || "");
+
+      // Append optional fields - always append them even if empty
+      // The backend should handle empty strings vs null
+      updateData.append("gmail", formData.gmail || "");
+      updateData.append("tel", formData.tel || "");
+      updateData.append("address", formData.address || "");
+
+      // Date of birth - convert to ISO string if present
+      if (formData.dateBorn) {
+        // Ensure date is in correct format
+        const dateValue = formData.dateBorn.includes("T")
+          ? formData.dateBorn
+          : `${formData.dateBorn}T00:00:00`;
+        updateData.append("dateBorn", new Date(dateValue).toISOString());
+      } else {
+        updateData.append("dateBorn", "");
+      }
+
+      // Gender
+      updateData.append("gender", formData.gender || "");
+
+      // Only append school fields if user is a student
+      if (user.role === USER_ROLES.STUDENT) {
+        updateData.append("schoolName", formData.schoolName || "");
+        updateData.append("schoolId", formData.schoolId || "");
+      }
+
+      // Append logo URL if we have one
+      if (logoUrl) {
+        updateData.append("userLogo", logoUrl);
+      }
+
+      // Debug: Log FormData contents - iterate through all entries
+      console.log("=== Form Data Being Sent ===");
+      console.log("name:", fullName);
+      console.log("email:", formData.email);
+      console.log("gmail:", formData.gmail);
+      console.log("tel:", formData.tel);
+      console.log("address:", formData.address);
+      console.log("dateBorn:", formData.dateBorn);
+      console.log("gender:", formData.gender);
+      console.log("schoolName:", formData.schoolName);
+      console.log("schoolId:", formData.schoolId);
+      console.log("logoUrl:", logoUrl);
+
+      // Log all FormData entries to see what's actually being sent
+      console.log("=== FormData Entries ===");
+      for (let pair of updateData.entries()) {
+        console.log(pair[0] + ": " + pair[1]);
+      }
+
+      // If no new logo is being uploaded, try sending as JSON instead
+      // This might work better if backend has issues parsing FormData
+      let response;
+      if (!formData.userLogo) {
+        // No file upload, send as JSON
+        const jsonData = {
+          name: fullName,
+          email: formData.email,
+          firstName: formData.firstName || "",
+          secondName: formData.secondName || "",
+          gmail: formData.gmail || "",
+          tel: formData.tel || "",
+          address: formData.address || "",
+          gender: formData.gender || "",
+          dateBorn: formData.dateBorn
+            ? new Date(formData.dateBorn + "T00:00:00").toISOString()
+            : "",
+        };
+
+        if (user.role === USER_ROLES.STUDENT) {
+          jsonData.schoolName = formData.schoolName || "";
+          jsonData.schoolId = formData.schoolId || "";
+        }
+
+        if (logoUrl) {
+          jsonData.userLogo = logoUrl;
+        }
+
+        console.log("Sending as JSON (no file upload):", jsonData);
+        response = await authAPI.updateProfile(jsonData);
+      } else {
+        // Has file upload, use FormData
+        console.log("Calling updateProfile API with FormData...");
+        response = await authAPI.updateProfile(updateData);
+      }
+
+      console.log("Profile update response:", response.data);
       const updatedUser = response.data.user || response.data;
-      
+
       // Update user in context
       setUser(updatedUser);
-      
+
       setNotification({
-        message: 'Profile updated successfully!',
-        type: 'success',
+        message: "Profile updated successfully!",
+        type: "success",
       });
 
       setTimeout(() => {
-        navigate('/profile');
+        navigate("/profile");
       }, 1500);
     } catch (error) {
+      console.error("Profile update error:", error);
+      console.error("Error response:", error.response?.data);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to update profile. Please check all required fields.";
       setNotification({
-        message: error.response?.data?.message || 'Failed to update profile',
-        type: 'error',
+        message: errorMessage,
+        type: "error",
       });
     } finally {
       setLoading(false);
@@ -161,7 +286,7 @@ const ProfileEdit = () => {
           <h1 className="profile-edit-title text-glow">Edit Profile</h1>
           <button
             className="button-secondary"
-            onClick={() => navigate('/profile')}
+            onClick={() => navigate("/profile")}
           >
             Cancel
           </button>
@@ -191,7 +316,11 @@ const ProfileEdit = () => {
               )}
               {!formData.userLogo && user.userLogo && (
                 <div className="file-preview">
-                  <img src={user.userLogo} alt="Current" className="preview-image" />
+                  <img
+                    src={user.userLogo}
+                    alt="Current"
+                    className="preview-image"
+                  />
                   <p className="preview-note">Current profile picture</p>
                 </div>
               )}
@@ -349,16 +478,12 @@ const ProfileEdit = () => {
             <button
               type="button"
               className="button-secondary"
-              onClick={() => navigate('/profile')}
+              onClick={() => navigate("/profile")}
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              className="button-primary"
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : 'Save Changes'}
+            <button type="submit" className="button-primary" disabled={loading}>
+              {loading ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>
@@ -376,4 +501,3 @@ const ProfileEdit = () => {
 };
 
 export default ProfileEdit;
-

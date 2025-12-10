@@ -16,6 +16,10 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // If FormData, remove Content-Type header so axios can set it with boundary
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+    }
     return config;
   },
   (error) => {
@@ -53,14 +57,7 @@ export const authAPI = {
   loginWithGoogle: (token) => api.post("/auth/google", { token }),
   getMe: () => api.get("/auth/me"),
   updateProfile: (data) => {
-    // If data is FormData, use multipart/form-data headers
-    if (data instanceof FormData) {
-      return api.put("/auth/profile", data, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-    }
+    // Interceptor will handle FormData Content-Type automatically
     return api.put("/auth/profile", data);
   },
   uploadLogo: (logoFile) => {
@@ -161,6 +158,28 @@ export const adminAPI = {
   },
   deleteOlympiad: (id) => api.delete(`/admin/olympiads/${id}`),
 
+  // Upload olympiad logo
+  uploadOlympiadLogo: (logoFile, olympiadId = null) => {
+    const formData = new FormData();
+    formData.append("photo", logoFile);
+
+    // Add olympiadId to form data (backend requires it)
+    // Send empty string if null (for new olympiads)
+    formData.append("olympiadId", olympiadId || "");
+
+    // Also add as query parameter if provided
+    let url = "/admin/olympiads/upload-logo";
+    if (olympiadId) {
+      url += `?olympiadId=${olympiadId}`;
+    }
+
+    return api.post(url, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
   // Question management
   getQuestions: (olympiadId) => {
     const url = olympiadId
@@ -228,23 +247,26 @@ export const resolterAPI = {
   editResult: (resultId, data) => {
     return api.put(`/resolter/results/${resultId}/edit`, data);
   },
-  
+
   // Change result status
   changeResultStatus: (resultId, status) => {
     return api.put(`/resolter/results/${resultId}/status`, { status });
   },
-  
+
   // Toggle result visibility
   toggleResultVisibility: (resultId, visible) => {
     return api.put(`/resolter/results/${resultId}/visibility`, { visible });
   },
-  
+
   // Make all results visible for an olympiad
   makeAllResultsVisible: (olympiadId = null) => {
     const params = new URLSearchParams();
     if (olympiadId) params.append("olympiadId", olympiadId);
     const query = params.toString();
-    return api.put(`/resolter/results/visibility/all${query ? `?${query}` : ""}`, { visible: true });
+    return api.put(
+      `/resolter/results/visibility/all${query ? `?${query}` : ""}`,
+      { visible: true }
+    );
   },
 };
 

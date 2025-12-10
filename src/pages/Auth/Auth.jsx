@@ -70,11 +70,25 @@ const Auth = () => {
         result = await login(formData.email, formData.password);
       } else {
         // Simple registration with only essential fields
+        // Backend expects 'name' field, not 'firstName' and 'secondName'
+        const fullName = `${formData.firstName || ""} ${
+          formData.secondName || ""
+        }`.trim();
+        if (!fullName) {
+          setNotification({
+            message: "First name and second name are required",
+            type: "error",
+          });
+          setLoading(false);
+          return;
+        }
+
         const registerData = {
           email: formData.email,
           password: formData.password,
-          firstName: formData.firstName,
-          secondName: formData.secondName,
+          name: fullName,
+          firstName: formData.firstName || "",
+          secondName: formData.secondName || "",
         };
 
         result = await register(registerData);

@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { authAPI } from '../../services/api';
-import { USER_ROLES } from '../../utils/constants';
-import NotificationToast from '../../components/NotificationToast';
-import './CompleteProfile.css';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { authAPI } from "../../services/api";
+import { USER_ROLES } from "../../utils/constants";
+import NotificationToast from "../../components/NotificationToast";
+import "./CompleteProfile.css";
 
 const CompleteProfile = () => {
   const { user, setUser } = useAuth();
@@ -12,53 +12,61 @@ const CompleteProfile = () => {
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(null);
   const [formData, setFormData] = useState({
-    name: '',
-    tel: '',
-    address: '',
-    schoolName: '',
-    schoolId: '',
-    dateBorn: '',
-    gender: '',
+    name: "",
+    tel: "",
+    address: "",
+    schoolName: "",
+    schoolId: "",
+    dateBorn: "",
+    gender: "",
     userLogo: null,
   });
 
   useEffect(() => {
     // If user already has complete profile, redirect to dashboard
     if (user) {
-      const hasCompleteInfo = user.name && user.tel && user.address && 
-        user.dateBorn && user.gender && 
-        (user.role !== USER_ROLES.STUDENT || (user.schoolName && user.schoolId));
-      
+      const hasCompleteInfo =
+        user.name &&
+        user.tel &&
+        user.address &&
+        user.dateBorn &&
+        user.gender &&
+        (user.role !== USER_ROLES.STUDENT ||
+          (user.schoolName && user.schoolId));
+
       if (hasCompleteInfo) {
-        navigate('/dashboard');
+        navigate("/dashboard");
         return;
       }
-      
+
       // Pre-fill with existing data if available
       const formatDateForInput = (dateString) => {
-        if (!dateString) return '';
+        if (!dateString) return "";
         const date = new Date(dateString);
         const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
         return `${year}-${month}-${day}`;
       };
-      
+
       setFormData({
-        name: user.name || `${user.firstName || ''} ${user.secondName || ''}`.trim() || '',
-        tel: user.tel || '',
-        address: user.address || '',
-        schoolName: user.schoolName || '',
-        schoolId: user.schoolId || '',
-        dateBorn: user.dateBorn ? formatDateForInput(user.dateBorn) : '',
-        gender: user.gender || '',
+        name:
+          user.name ||
+          `${user.firstName || ""} ${user.secondName || ""}`.trim() ||
+          "",
+        tel: user.tel || "",
+        address: user.address || "",
+        schoolName: user.schoolName || "",
+        schoolId: user.schoolId || "",
+        dateBorn: user.dateBorn ? formatDateForInput(user.dateBorn) : "",
+        gender: user.gender || "",
         userLogo: null,
       });
     }
   }, [user, navigate]);
 
   const handleChange = (e) => {
-    if (e.target.type === 'file') {
+    if (e.target.type === "file") {
       setFormData({
         ...formData,
         [e.target.name]: e.target.files[0] || null,
@@ -83,11 +91,16 @@ const CompleteProfile = () => {
       if (formData.userLogo) {
         try {
           const logoResponse = await authAPI.uploadLogo(formData.userLogo);
-          logoUrl = logoResponse.data.logoUrl || logoResponse.data.url || logoResponse.data.userLogo;
+          logoUrl =
+            logoResponse.data.logoUrl ||
+            logoResponse.data.url ||
+            logoResponse.data.userLogo;
         } catch (logoError) {
           setNotification({
-            message: logoError.response?.data?.message || 'Failed to upload logo. Please try again.',
-            type: 'error',
+            message:
+              logoError.response?.data?.message ||
+              "Failed to upload logo. Please try again.",
+            type: "error",
           });
           setLoading(false);
           return;
@@ -96,41 +109,50 @@ const CompleteProfile = () => {
 
       // Then update profile with all information
       const updateData = new FormData();
-      updateData.append('name', formData.name);
-      updateData.append('tel', formData.tel);
-      updateData.append('address', formData.address);
-      updateData.append('dateBorn', formData.dateBorn);
-      updateData.append('gender', formData.gender);
-      
+      updateData.append("name", formData.name);
+      updateData.append("firstName", formData.firstName || "");
+      updateData.append("secondName", formData.secondName || "");
+      updateData.append("tel", formData.tel);
+      updateData.append("address", formData.address);
+      updateData.append("dateBorn", formData.dateBorn);
+      updateData.append("gender", formData.gender);
+
       // Only append school fields if user is a student
       if (user.role === USER_ROLES.STUDENT) {
-        updateData.append('schoolName', formData.schoolName);
-        updateData.append('schoolId', formData.schoolId);
+        updateData.append("schoolName", formData.schoolName);
+        updateData.append("schoolId", formData.schoolId);
       }
-      
+
       // Append logo URL if we have one
       if (logoUrl) {
-        updateData.append('userLogo', logoUrl);
+        updateData.append("userLogo", logoUrl);
       }
 
       const response = await authAPI.updateProfile(updateData);
       const updatedUser = response.data.user || response.data;
-      
+
       // Update user in context
       setUser(updatedUser);
-      
+
       setNotification({
-        message: 'Profile completed successfully!',
-        type: 'success',
+        message: "Profile completed successfully!",
+        type: "success",
       });
 
       setTimeout(() => {
-        navigate('/dashboard');
+        navigate("/dashboard");
       }, 1500);
     } catch (error) {
+      console.error("Profile completion error:", error);
+      console.error("Error response:", error.response?.data);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to complete profile. Please check all required fields.";
       setNotification({
-        message: error.response?.data?.message || 'Failed to complete profile',
-        type: 'error',
+        message: errorMessage,
+        type: "error",
       });
     } finally {
       setLoading(false);
@@ -153,7 +175,9 @@ const CompleteProfile = () => {
     <div className="complete-profile-page">
       <div className="container">
         <div className="complete-profile-header">
-          <h1 className="complete-profile-title text-glow">Complete Your Profile</h1>
+          <h1 className="complete-profile-title text-glow">
+            Complete Your Profile
+          </h1>
           <p className="complete-profile-subtitle">
             Please provide the following information to continue
           </p>
@@ -183,7 +207,11 @@ const CompleteProfile = () => {
               )}
               {!formData.userLogo && user.userLogo && (
                 <div className="file-preview">
-                  <img src={user.userLogo} alt="Current" className="preview-image" />
+                  <img
+                    src={user.userLogo}
+                    alt="Current"
+                    className="preview-image"
+                  />
                   <p className="preview-note">Current profile picture</p>
                 </div>
               )}
@@ -293,12 +321,8 @@ const CompleteProfile = () => {
           )}
 
           <div className="form-actions">
-            <button
-              type="submit"
-              className="button-primary"
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : 'Complete Profile'}
+            <button type="submit" className="button-primary" disabled={loading}>
+              {loading ? "Saving..." : "Complete Profile"}
             </button>
           </div>
         </form>
@@ -316,4 +340,3 @@ const CompleteProfile = () => {
 };
 
 export default CompleteProfile;
-

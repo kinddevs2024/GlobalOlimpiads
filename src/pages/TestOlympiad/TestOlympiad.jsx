@@ -8,6 +8,7 @@ import ProctoringMonitor from '../../components/ProctoringMonitor';
 import NotificationToast from '../../components/NotificationToast';
 import { useAuth } from '../../context/AuthContext';
 import { getTimeRemaining, getTimeRemainingFromDuration } from '../../utils/helpers';
+import { getStorageItem, setStorageItem, removeStorageItem } from '../../utils/storage';
 import './TestOlympiad.css';
 
 const TestOlympiad = () => {
@@ -45,14 +46,14 @@ const TestOlympiad = () => {
   useEffect(() => {
     if (!olympiad || !id || submitted) return;
 
-    const startTime = localStorage.getItem(`olympiad_${id}_startTime`);
+    const startTime = getStorageItem(`${id}_startTime`);
     const duration = olympiad.duration || 3600; // Duration in seconds (e.g., 3600 = 60 minutes)
 
     if (!startTime || !duration) {
       // If no start time, try to initialize it now
       if (olympiad.duration) {
         const now = new Date().toISOString();
-        localStorage.setItem(`olympiad_${id}_startTime`, now);
+        setStorageItem(`${id}_startTime`, now, true); // Immediate save for start time
         setTimeRemaining(duration);
       }
       return;
@@ -71,25 +72,20 @@ const TestOlympiad = () => {
     return () => clearInterval(interval);
   }, [olympiad, id, submitted]);
 
-  // Load saved answers from localStorage on mount
+  // Load saved answers from storage on mount
   useEffect(() => {
     if (id) {
-      const savedAnswers = localStorage.getItem(`olympiad_${id}_answers`);
-      if (savedAnswers) {
-        try {
-          const parsedAnswers = JSON.parse(savedAnswers);
-          setAnswers(parsedAnswers);
-        } catch (error) {
-          console.error('Error loading saved answers:', error);
-        }
+      const savedAnswers = getStorageItem(`${id}_answers`, {});
+      if (savedAnswers && Object.keys(savedAnswers).length > 0) {
+        setAnswers(savedAnswers);
       }
     }
   }, [id]);
 
-  // Auto-save answers to localStorage whenever they change
+  // Auto-save answers to storage whenever they change (debounced)
   useEffect(() => {
     if (id && Object.keys(answers).length > 0) {
-      localStorage.setItem(`olympiad_${id}_answers`, JSON.stringify(answers));
+      setStorageItem(`${id}_answers`, answers); // Debounced write
     }
   }, [answers, id]);
 
@@ -101,7 +97,7 @@ const TestOlympiad = () => {
       setQuestions(olympiadData.questions || []);
 
       // Check if user has gone through start page (optional check)
-      const started = localStorage.getItem(`olympiad_${id}_started`);
+      const started = getStorageItem(`${id}_started`);
       if (!started && olympiadData.status === 'published') {
         // Optional: redirect to start page if not started
         // Uncomment if you want to force users to go through start page
@@ -109,7 +105,7 @@ const TestOlympiad = () => {
       }
       
       // Calculate remaining time based on duration from start time
-      const startTime = localStorage.getItem(`olympiad_${id}_startTime`);
+      const startTime = getStorageItem(`${id}_startTime`);
       const duration = olympiadData.duration || 3600; // Default to 60 minutes (3600 seconds)
       
       if (startTime && duration) {
@@ -169,7 +165,7 @@ const TestOlympiad = () => {
         await olympiadAPI.submit(id, { answers });
         setSubmitted(true);
         // Clear saved answers after successful submission
-        localStorage.removeItem(`olympiad_${id}_answers`);
+        removeStorageItem(`${id}_answers`);
         setNotification({ message: 'Answers submitted successfully! Videos uploaded.', type: 'success' });
         setIsUploadingVideos(false);
         

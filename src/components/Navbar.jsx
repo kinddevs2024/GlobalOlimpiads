@@ -44,13 +44,6 @@ const Navbar = () => {
             <Link to="/school-teacher" className="navbar-link">Teacher Panel</Link>
           ) : null}
           
-          {(user?.role === USER_ROLES.ADMIN || 
-            user?.role === USER_ROLES.OWNER || 
-            user?.role === USER_ROLES.SCHOOL_ADMIN ||
-            user?.role === USER_ROLES.SCHOOL_TEACHER) ? (
-            <Link to="/monitoring" className="navbar-link">Real-Time Monitoring</Link>
-          ) : null}
-          
           <Link to="/results" className="navbar-link">Results</Link>
           <Link to="/profile" className="navbar-link">Profile</Link>
           

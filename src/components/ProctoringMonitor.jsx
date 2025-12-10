@@ -1,12 +1,10 @@
-import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { olympiadAPI } from '../services/api';
 import { VIDEO_WIDTH, VIDEO_HEIGHT, API_BASE_URL, CAMERA_CAPTURE_INTERVAL } from '../utils/constants';
 import { generateVideoFilename, generateExitScreenshotFilename } from '../utils/helpers';
-import { useSocket } from '../context/SocketContext';
 import './ProctoringMonitor.css';
 
-const ProctoringMonitor = forwardRef(({ olympiadId, userId, olympiadTitle, onRecordingStatusChange }, ref) => {
-  const { socket, connected, emit } = useSocket();
+const ProctoringMonitor = ({ olympiadId, userId, olympiadTitle, onRecordingStatusChange }) => {
   const cameraVideoRef = useRef(null);
   const screenVideoRef = useRef(null);
   
@@ -30,18 +28,6 @@ const ProctoringMonitor = forwardRef(({ olympiadId, userId, olympiadTitle, onRec
   const canvasRef = useRef(null);
   const realTimeCaptureIntervalRef = useRef(null);
   const captureCanvasRef = useRef(null);
-  const stopRecordingRef = useRef(null);
-
-  // Expose stopRecording function to parent via ref
-  useImperativeHandle(ref, () => ({
-    stopRecording: () => {
-      if (stopRecordingRef.current) {
-        return stopRecordingRef.current();
-      }
-    },
-    isRecording: isRecording,
-    isUploading: isUploading,
-  }));
 
   // Function to capture last frame from video element synchronously
   const captureLastFrameSync = (videoElement, type) => {
@@ -465,19 +451,24 @@ const ProctoringMonitor = forwardRef(({ olympiadId, userId, olympiadTitle, onRec
       // Clear any existing interval
       if (realTimeCaptureIntervalRef.current) {
         clearInterval(realTimeCaptureIntervalRef.current);
+        realTimeCaptureIntervalRef.current = null;
       }
 
-      // Create canvas for captures if not exists
+      // Create canvas for captures if not exists (reuse to prevent memory leaks)
       if (!captureCanvasRef.current) {
         captureCanvasRef.current = document.createElement('canvas');
         captureCanvasRef.current.width = VIDEO_WIDTH;
         captureCanvasRef.current.height = VIDEO_HEIGHT;
       }
 
+      // Use longer interval to reduce API calls (send every 5 seconds instead of 1)
+      // This reduces server load while still providing adequate monitoring
+      const captureInterval = Math.max(CAMERA_CAPTURE_INTERVAL || 5000, 5000); // Minimum 5 seconds
+
       // Send captures periodically
       realTimeCaptureIntervalRef.current = setInterval(() => {
         sendRealTimeCapture();
-      }, CAMERA_CAPTURE_INTERVAL || 1000); // Send every 1 second
+      }, captureInterval);
     };
 
     const sendRealTimeCapture = async () => {
@@ -486,47 +477,40 @@ const ProctoringMonitor = forwardRef(({ olympiadId, userId, olympiadTitle, onRec
 
       try {
         const canvas = captureCanvasRef.current;
+        if (!canvas) return;
+        
         const ctx = canvas.getContext('2d');
+        if (!ctx) return;
 
         // Capture camera frame
         let cameraDataURL = null;
-        let cameraBase64 = null;
         if (cameraVideoRef.current && cameraVideoRef.current.readyState >= 2) {
-          ctx.drawImage(cameraVideoRef.current, 0, 0, canvas.width, canvas.height);
-          cameraDataURL = canvas.toDataURL('image/jpeg', 0.7);
-          // Extract base64 part (remove data:image/jpeg;base64, prefix)
-          cameraBase64 = cameraDataURL.split(',')[1];
+          try {
+            ctx.drawImage(cameraVideoRef.current, 0, 0, canvas.width, canvas.height);
+            cameraDataURL = canvas.toDataURL('image/jpeg', 0.6); // Lower quality to reduce payload size
+            // Clear canvas after capture to free memory
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+          } catch (drawError) {
+            // Ignore draw errors (video may not be ready)
+          }
         }
 
         // Capture screen frame
         let screenDataURL = null;
-        let screenBase64 = null;
         if (screenVideoRef.current && screenVideoRef.current.readyState >= 2) {
-          ctx.drawImage(screenVideoRef.current, 0, 0, canvas.width, canvas.height);
-          screenDataURL = canvas.toDataURL('image/jpeg', 0.7);
-          // Extract base64 part (remove data:image/jpeg;base64, prefix)
-          screenBase64 = screenDataURL.split(',')[1];
+          try {
+            ctx.drawImage(screenVideoRef.current, 0, 0, canvas.width, canvas.height);
+            screenDataURL = canvas.toDataURL('image/jpeg', 0.6); // Lower quality to reduce payload size
+            // Clear canvas after capture
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+          } catch (drawError) {
+            // Ignore draw errors (video may not be ready)
+          }
         }
 
         if (!cameraDataURL && !screenDataURL) return;
 
-        // Stream via WebSocket for real-time monitoring (if connected)
-        if (connected && socket && (cameraBase64 || screenBase64)) {
-          try {
-            emit('stream-video-frame', {
-              olympiadId: olympiadId,
-              userId: userId,
-              cameraFrame: cameraBase64,
-              screenFrame: screenBase64,
-              timestamp: new Date().toISOString(),
-            });
-          } catch (wsError) {
-            // Silently fail WebSocket streaming - don't interrupt user experience
-            console.error('Error streaming via WebSocket:', wsError);
-          }
-        }
-
-        // Also send to backend for storage (fire and forget - don't wait for response)
+        // Convert data URLs to blobs
         const formData = new FormData();
         formData.append('olympiadId', olympiadId);
         formData.append('timestamp', new Date().toISOString());
@@ -534,21 +518,47 @@ const ProctoringMonitor = forwardRef(({ olympiadId, userId, olympiadTitle, onRec
         if (cameraDataURL) {
           const cameraBlob = dataURLtoBlob(cameraDataURL);
           formData.append('cameraImage', cameraBlob, 'camera.jpg');
+          // Clear data URL reference to help GC
+          cameraDataURL = null;
         }
 
         if (screenDataURL) {
           const screenBlob = dataURLtoBlob(screenDataURL);
           formData.append('screenImage', screenBlob, 'screen.jpg');
+          // Clear data URL reference to help GC
+          screenDataURL = null;
         }
 
-        // Send to backend using API service (fire and forget - don't wait for response)
-        olympiadAPI.uploadRealTimeCapture(formData).catch(error => {
-          // Silently fail - don't interrupt user experience
-          console.error('Error sending real-time capture:', error);
+        // Get token from localStorage
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        // Send to backend (fire and forget - don't wait for response)
+        // Use AbortController for cleanup if component unmounts
+        const controller = new AbortController();
+        fetch(`${API_BASE_URL}/olympiads/real-time-capture`, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          keepalive: true,
+          signal: controller.signal
+        }).catch(error => {
+          // Ignore abort errors and log others only in development
+          if (error.name !== 'AbortError' && process.env.NODE_ENV === 'development') {
+            console.error('Error sending real-time capture:', error);
+          }
         });
 
+        // Store controller for potential cleanup
+        return controller;
+
       } catch (error) {
-        console.error('Error in sendRealTimeCapture:', error);
+        // Only log in development to avoid console spam
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error in sendRealTimeCapture:', error);
+        }
       }
     };
 
@@ -564,11 +574,7 @@ const ProctoringMonitor = forwardRef(({ olympiadId, userId, olympiadTitle, onRec
       return new Blob([ab], { type: mimeString });
     };
 
-    const stopRecording = async () => {
-      if (!isRecording) {
-        return Promise.resolve(); // Already stopped
-      }
-
+    const stopRecording = () => {
       setIsRecording(false);
       
       // Stop real-time capture sending
@@ -593,21 +599,10 @@ const ProctoringMonitor = forwardRef(({ olympiadId, userId, olympiadTitle, onRec
       }
 
       // Wait a bit for recording to finalize, then upload
-      return new Promise((resolve) => {
-        setTimeout(async () => {
-          try {
-            await handleRecordingComplete();
-            resolve();
-          } catch (error) {
-            console.error('Error in handleRecordingComplete:', error);
-            resolve(); // Resolve anyway to not block submission
-          }
-        }, 1000);
-      });
+      setTimeout(() => {
+        handleRecordingComplete();
+      }, 1000);
     };
-
-    // Store stopRecording in ref so it can be accessed by useImperativeHandle
-    stopRecordingRef.current = stopRecording;
 
     const handleRecordingComplete = async () => {
       setIsUploading(true);
@@ -639,15 +634,13 @@ const ProctoringMonitor = forwardRef(({ olympiadId, userId, olympiadTitle, onRec
       } catch (error) {
         console.error('Error uploading videos:', error);
         setUploadStatus('Upload failed');
-        // Don't show alert if component is unmounting
-        if (document.body.contains(document.querySelector('.proctoring-monitor'))) {
-          alert('Failed to upload videos. Please check your connection and try again.');
-        }
-        throw error; // Re-throw so caller knows upload failed
+        alert('Failed to upload videos. Please check your connection and try again.');
       } finally {
-        setIsUploading(false);
-        setUploadProgress({ camera: 0, screen: 0 });
-        setUploadStatus('');
+        setTimeout(() => {
+          setIsUploading(false);
+          setUploadProgress({ camera: 0, screen: 0 });
+          setUploadStatus('');
+        }, 2000);
       }
     };
 
@@ -705,23 +698,62 @@ const ProctoringMonitor = forwardRef(({ olympiadId, userId, olympiadTitle, onRec
 
     // Cleanup function
     return () => {
+      // Stop recording immediately
       stopRecording();
 
-      // Perform async cleanup
-      (async () => {
-        // Wait for uploads to complete
-        await new Promise(resolve => setTimeout(resolve, 3000));
+      // Clear intervals
+      if (realTimeCaptureIntervalRef.current) {
+        clearInterval(realTimeCaptureIntervalRef.current);
+        realTimeCaptureIntervalRef.current = null;
+      }
 
-        // Stop streams
-        if (cameraStreamRef.current) {
-          cameraStreamRef.current.getTracks().forEach(track => track.stop());
-          cameraStreamRef.current = null;
+      // Stop all video tracks immediately
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach(track => {
+          track.stop();
+          track.onended = null; // Remove event listeners
+        });
+        cameraStreamRef.current = null;
+      }
+      
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(track => {
+          track.stop();
+          track.onended = null; // Remove event listeners
+        });
+        screenStreamRef.current = null;
+      }
+
+      // Clear video refs
+      if (cameraVideoRef.current) {
+        cameraVideoRef.current.srcObject = null;
+      }
+      if (screenVideoRef.current) {
+        screenVideoRef.current.srcObject = null;
+      }
+
+      // Stop recorders
+      if (cameraRecorderRef.current && cameraRecorderRef.current.state !== 'inactive') {
+        cameraRecorderRef.current.stop();
+        cameraRecorderRef.current = null;
+      }
+      if (screenRecorderRef.current && screenRecorderRef.current.state !== 'inactive') {
+        screenRecorderRef.current.stop();
+        screenRecorderRef.current = null;
+      }
+
+      // Clear chunks to free memory
+      cameraChunksRef.current = [];
+      screenChunksRef.current = [];
+
+      // Dispose canvas
+      if (captureCanvasRef.current) {
+        const ctx = captureCanvasRef.current.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, captureCanvasRef.current.width, captureCanvasRef.current.height);
         }
-        if (screenStreamRef.current) {
-          screenStreamRef.current.getTracks().forEach(track => track.stop());
-          screenStreamRef.current = null;
-        }
-      })();
+        captureCanvasRef.current = null;
+      }
     };
   }, [consentGiven, olympiadId, userId]);
 
@@ -851,8 +883,6 @@ const ProctoringMonitor = forwardRef(({ olympiadId, userId, olympiadTitle, onRec
       </div>
     </div>
   );
-});
-
-ProctoringMonitor.displayName = 'ProctoringMonitor';
+};
 
 export default ProctoringMonitor;

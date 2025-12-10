@@ -39,7 +39,7 @@ const QuestionFormStep = ({
           setIsAdding(false);
           return;
         }
-        
+
         const validOptions = questionForm.options.filter(
           (opt) => opt.trim() !== ""
         );
@@ -50,7 +50,7 @@ const QuestionFormStep = ({
           setIsAdding(false);
           return;
         }
-        
+
         if (!questionForm.correctAnswer || !questionForm.correctAnswer.trim()) {
           if (onValidationError) {
             onValidationError("Please select a correct answer");
@@ -131,8 +131,7 @@ const QuestionFormStep = ({
                       key={optIndex}
                       className={`option ${
                         opt === q.correctAnswer ? "correct" : ""
-                      }`}
-                    >
+                      }`}>
                       {String.fromCharCode(65 + optIndex)}. {opt}
                     </div>
                   ))}
@@ -213,13 +212,21 @@ const QuestionFormStep = ({
         </div>
 
         <div className="form-actions">
-          <button type="button" className="button-secondary" onClick={onBack} disabled={isAdding}>
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={onBack}
+            disabled={isAdding}>
             Back
           </button>
           <button type="submit" className="button-primary" disabled={isAdding}>
             {isAdding ? "Adding..." : "Add Question"}
           </button>
-          <button type="button" className="button-success" onClick={onFinish} disabled={isAdding}>
+          <button
+            type="button"
+            className="button-success"
+            onClick={onFinish}
+            disabled={isAdding}>
             Finish
           </button>
         </div>
@@ -232,7 +239,7 @@ const AdminPanel = () => {
   const { user } = useAuth();
   const isResolter = user?.role === USER_ROLES.RESOLTER;
   const canManageOlympiads = !isResolter; // Resolters can only manage questions, not olympiads
-  
+
   const [olympiads, setOlympiads] = useState([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedOlympiad, setSelectedOlympiad] = useState(null);
@@ -430,17 +437,19 @@ const AdminPanel = () => {
       };
 
       const response = await adminAPI.addQuestion(questionPayload);
-      const newQuestion = response.data || response.data?.question || questionPayload;
+      const newQuestion =
+        response.data || response.data?.question || questionPayload;
       setQuestions([...questions, newQuestion]);
       setNotification({
         message: "Question added successfully!",
         type: "success",
       });
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
-                          error.message || 
-                          "Failed to add question";
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to add question";
       setNotification({
         message: errorMessage,
         type: "error",
@@ -486,9 +495,10 @@ const AdminPanel = () => {
     });
     await fetchOlympiads();
     setNotification({
-      message: questions.length > 0 
-        ? `Olympiad created successfully with ${questions.length} question(s)!`
-        : "Olympiad created successfully! You can add questions later by editing it.",
+      message:
+        questions.length > 0
+          ? `Olympiad created successfully with ${questions.length} question(s)!`
+          : "Olympiad created successfully! You can add questions later by editing it.",
       type: "success",
     });
   };
@@ -736,8 +746,7 @@ const AdminPanel = () => {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="status-filter"
-                >
+                  className="status-filter">
                   <option value="all">All Status</option>
                   <option value="published">Published</option>
                   <option value="unpublished">Unpublished</option>
@@ -745,8 +754,7 @@ const AdminPanel = () => {
                 </select>
                 <button
                   className="button-primary header-create-button"
-                  onClick={() => setShowCreateForm(!showCreateForm)}
-                >
+                  onClick={() => setShowCreateForm(!showCreateForm)}>
                   {showCreateForm ? "Cancel" : "+ Create Olympiad"}
                 </button>
               </>
@@ -761,16 +769,14 @@ const AdminPanel = () => {
               <div
                 className={`step ${currentStep >= 1 ? "active" : ""} ${
                   currentStep > 1 ? "completed" : ""
-                }`}
-              >
+                }`}>
                 <span className="step-number">1</span>
                 <span className="step-label">Choose Type</span>
               </div>
               <div
                 className={`step ${currentStep >= 2 ? "active" : ""} ${
                   currentStep > 2 ? "completed" : ""
-                }`}
-              >
+                }`}>
                 <span className="step-number">2</span>
                 <span className="step-label">Basic Info</span>
               </div>
@@ -807,8 +813,7 @@ const AdminPanel = () => {
                       if (!editingOlympiad) {
                         setCurrentStep(2);
                       }
-                    }}
-                  >
+                    }}>
                     <div className="type-icon">📝</div>
                     <h3>Test</h3>
                     <p>Multiple choice questions with automatic grading</p>
@@ -824,8 +829,7 @@ const AdminPanel = () => {
                       if (!editingOlympiad) {
                         setCurrentStep(2);
                       }
-                    }}
-                  >
+                    }}>
                     <div className="type-icon">✍️</div>
                     <h3>Essay</h3>
                     <p>Essay questions requiring manual evaluation</p>
@@ -841,8 +845,7 @@ const AdminPanel = () => {
                       if (!editingOlympiad) {
                         setCurrentStep(2);
                       }
-                    }}
-                  >
+                    }}>
                     <div className="type-icon">📚</div>
                     <h3>Mixed</h3>
                     <p>Both test and essay questions in one olympiad</p>
@@ -853,16 +856,14 @@ const AdminPanel = () => {
                   <button
                     type="button"
                     className="button-secondary"
-                    onClick={handleCancel}
-                  >
+                    onClick={handleCancel}>
                     Cancel
                   </button>
                   {formData.type && (
                     <button
                       type="button"
                       className="button-primary"
-                      onClick={() => setCurrentStep(2)}
-                    >
+                      onClick={() => setCurrentStep(2)}>
                       Next →
                     </button>
                   )}
@@ -889,8 +890,7 @@ const AdminPanel = () => {
                     editingOlympiad
                       ? handleUpdateOlympiad
                       : handleCreateOlympiad
-                  }
-                >
+                  }>
                   <div className="form-row">
                     <div className="form-group">
                       <label>Title</label>
@@ -911,8 +911,7 @@ const AdminPanel = () => {
                         onChange={(e) =>
                           setFormData({ ...formData, subject: e.target.value })
                         }
-                        required
-                      >
+                        required>
                         <option value="Mathematics">Mathematics</option>
                         <option value="English">English</option>
                         <option value="Science">Science</option>
@@ -957,8 +956,7 @@ const AdminPanel = () => {
                       {formData.olympiadLogo && (
                         <div
                           className="file-preview"
-                          style={{ marginTop: "12px" }}
-                        >
+                          style={{ marginTop: "12px" }}>
                           <img
                             src={URL.createObjectURL(formData.olympiadLogo)}
                             alt="Logo preview"
@@ -1002,8 +1000,7 @@ const AdminPanel = () => {
                         onChange={(e) =>
                           setFormData({ ...formData, status: e.target.value })
                         }
-                        required
-                      >
+                        required>
                         <option value="draft">Draft</option>
                         <option value="published">Published (Visible)</option>
                         <option value="unpublished">
@@ -1045,15 +1042,13 @@ const AdminPanel = () => {
                     <button
                       type="button"
                       className="button-secondary"
-                      onClick={() => setCurrentStep(1)}
-                    >
+                      onClick={() => setCurrentStep(1)}>
                       ← Back
                     </button>
                     <button
                       type="button"
                       className="button-secondary"
-                      onClick={handleCancel}
-                    >
+                      onClick={handleCancel}>
                       Cancel
                     </button>
                     {editingOlympiad ? (
@@ -1097,8 +1092,7 @@ const AdminPanel = () => {
                                 type: "error",
                               });
                             }
-                          }}
-                        >
+                          }}>
                           Next: Questions →
                         </button>
                         <button type="submit" className="button-primary">
@@ -1133,125 +1127,125 @@ const AdminPanel = () => {
         )}
 
         <div className="admin-olympiads">
-          {(canManageOlympiads ? getFilteredOlympiads() : olympiads).map((olympiad) => {
-            // Get logo URL - handle both relative and absolute URLs
-            // Check multiple possible field names for logo
-            const logoField =
-              olympiad.olympiadLogo ||
-              olympiad.logo ||
-              olympiad.photo ||
-              olympiad.image;
+          {(canManageOlympiads ? getFilteredOlympiads() : olympiads).map(
+            (olympiad) => {
+              // Get logo URL - handle both relative and absolute URLs
+              // Check multiple possible field names for logo
+              const logoField =
+                olympiad.olympiadLogo ||
+                olympiad.logo ||
+                olympiad.photo ||
+                olympiad.image;
 
-            const getLogoUrl = (logo) => {
-              if (!logo) return null;
-              // If it's already a full URL (starts with http), return as is
-              if (logo.startsWith("http://") || logo.startsWith("https://")) {
-                return logo;
-              }
-              // If it starts with /api, it's already correct for proxy
-              if (logo.startsWith("/api")) {
-                return logo;
-              }
-              // Otherwise, prepend /api if in dev mode, or construct full URL
-              const API_BASE_URL =
-                import.meta.env.VITE_API_URL ||
-                (import.meta.env.DEV ? "/api" : "http://localhost:3000/api");
-              return logo.startsWith("/")
-                ? `${API_BASE_URL}${logo}`
-                : `${API_BASE_URL}/${logo}`;
-            };
+              const getLogoUrl = (logo) => {
+                if (!logo) return null;
+                // If it's already a full URL (starts with http), return as is
+                if (logo.startsWith("http://") || logo.startsWith("https://")) {
+                  return logo;
+                }
+                // If it starts with /api, it's already correct for proxy
+                if (logo.startsWith("/api")) {
+                  return logo;
+                }
+                // Otherwise, prepend /api if in dev mode, or construct full URL
+                const API_BASE_URL =
+                  import.meta.env.VITE_API_URL ||
+                  (import.meta.env.DEV ? "/api" : "http://localhost:3000/api");
+                return logo.startsWith("/")
+                  ? `${API_BASE_URL}${logo}`
+                  : `${API_BASE_URL}/${logo}`;
+              };
 
-            const logoUrl = getLogoUrl(logoField);
+              const logoUrl = getLogoUrl(logoField);
 
-            // Debug: Log olympiad data to see what fields are available
-            console.log("Olympiad data:", {
-              title: olympiad.title,
-              hasLogoField: !!logoField,
-              logoField: logoField,
-              logoUrl: logoUrl,
-              allFields: Object.keys(olympiad),
-            });
+              // Debug: Log olympiad data to see what fields are available
+              console.log("Olympiad data:", {
+                title: olympiad.title,
+                hasLogoField: !!logoField,
+                logoField: logoField,
+                logoUrl: logoUrl,
+                allFields: Object.keys(olympiad),
+              });
 
-            return (
-              <div key={olympiad._id} className="admin-olympiad-card card">
-                <div className="olympiad-card-header">
-                  <div className="olympiad-logo-container">
-                    {logoUrl ? (
-                      <img
-                        src={logoUrl}
-                        alt={`${olympiad.title} logo`}
-                        className="olympiad-logo"
-                        onError={(e) => {
-                          // Show placeholder if image fails to load
-                          e.target.style.display = "none";
-                          const container = e.target.parentElement;
-                          if (
-                            container &&
-                            !container.querySelector(".logo-placeholder")
-                          ) {
-                            const placeholder = document.createElement("div");
-                            placeholder.className = "logo-placeholder";
-                            placeholder.textContent = "📋";
-                            container.appendChild(placeholder);
-                          }
-                        }}
-                      />
-                    ) : (
-                      <div className="logo-placeholder">📋</div>
-                    )}
-                  </div>
-                  <div className="olympiad-info">
-                    <div className="olympiad-title-row">
+              return (
+                <div key={olympiad._id} className="admin-olympiad-card card">
+                  <div className="olympiad-card-header">
+                    <div className="olympiad-logo-container">
+                      {logoUrl ? (
+                        <img
+                          src={logoUrl}
+                          alt={`${olympiad.title} logo`}
+                          className="olympiad-logo"
+                          onError={(e) => {
+                            // Show placeholder if image fails to load
+                            e.target.style.display = "none";
+                            const container = e.target.parentElement;
+                            if (
+                              container &&
+                              !container.querySelector(".logo-placeholder")
+                            ) {
+                              const placeholder = document.createElement("div");
+                              placeholder.className = "logo-placeholder";
+                              placeholder.textContent = "📋";
+                              container.appendChild(placeholder);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="logo-placeholder">📋</div>
+                      )}
                       <h3>{olympiad.title}</h3>
-                      {getStatusBadge(olympiad.status || "draft")}
                     </div>
-                    <div className="olympiad-meta">
-                      <span>{olympiad.subject}</span>
-                      <span>•</span>
-                      <span>{olympiad.type}</span>
-                      <span>•</span>
-                      <span>{formatDate(olympiad.startTime)}</span>
+                    <div className="olympiad-info">
+                      <div className="olympiad-title-row">
+                        {getStatusBadge(olympiad.status || "draft")}
+                      </div>
+                      <div className="olympiad-meta">
+                        <span>{olympiad.subject}</span>
+                        <span>•</span>
+                        <span>{olympiad.type}</span>
+                        <span>•</span>
+                        <span>{formatDate(olympiad.startTime)}</span>
+                      </div>
                     </div>
                   </div>
+                  <div className="olympiad-actions">
+                    {canManageOlympiads && (
+                      <>
+                        <button
+                          className="button-secondary"
+                          onClick={() => handleToggleStatus(olympiad)}
+                          title={
+                            olympiad.status === "published"
+                              ? "Make Unvisible"
+                              : "Make Visible"
+                          }>
+                          {olympiad.status === "published"
+                            ? "🔒 Hide"
+                            : "👁️ Show"}
+                        </button>
+                        <button
+                          className="button-secondary"
+                          onClick={() => handleEdit(olympiad)}>
+                          Edit
+                        </button>
+                        <button
+                          className="button-danger"
+                          onClick={() => handleDelete(olympiad._id)}>
+                          Delete
+                        </button>
+                      </>
+                    )}
+                    <button
+                      className="button-secondary"
+                      onClick={() => handleManageQuestions(olympiad)}>
+                      Questions
+                    </button>
+                  </div>
                 </div>
-                <div className="olympiad-actions">
-                  {canManageOlympiads && (
-                    <>
-                      <button
-                        className="button-secondary"
-                        onClick={() => handleToggleStatus(olympiad)}
-                        title={
-                          olympiad.status === "published"
-                            ? "Make Unvisible"
-                            : "Make Visible"
-                        }
-                      >
-                        {olympiad.status === "published" ? "🔒 Hide" : "👁️ Show"}
-                      </button>
-                      <button
-                        className="button-secondary"
-                        onClick={() => handleEdit(olympiad)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="button-danger"
-                        onClick={() => handleDelete(olympiad._id)}
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
-                  <button
-                    className="button-secondary"
-                    onClick={() => handleManageQuestions(olympiad)}
-                  >
-                    Questions
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+              );
+            }
+          )}
         </div>
       </div>
 
@@ -1389,14 +1383,17 @@ const QuestionManager = ({ olympiad, onClose }) => {
   const handleEditQuestion = (question) => {
     setEditingQuestion(question._id);
     setShowAddForm(false);
-    
+
     // Populate form with question data
     setQuestionForm({
       question: question.question || "",
-      type: question.type || (olympiad.type === "test" ? "multiple-choice" : "essay"),
-      options: question.options && question.options.length > 0 
-        ? [...question.options, "", "", ""].slice(0, 4) // Ensure 4 options
-        : ["", "", "", ""],
+      type:
+        question.type ||
+        (olympiad.type === "test" ? "multiple-choice" : "essay"),
+      options:
+        question.options && question.options.length > 0
+          ? [...question.options, "", "", ""].slice(0, 4) // Ensure 4 options
+          : ["", "", "", ""],
       correctAnswer: question.correctAnswer || "",
       points: question.points || 10,
     });
@@ -1517,8 +1514,7 @@ const QuestionManager = ({ olympiad, onClose }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content question-manager"
-        onClick={(e) => e.stopPropagation()}
-      >
+        onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Manage Questions - {olympiad.title}</h2>
           <button className="modal-close" onClick={onClose}>
@@ -1536,17 +1532,17 @@ const QuestionManager = ({ olympiad, onClose }) => {
                   handleCancelEdit();
                 }
                 setShowAddForm(!showAddForm);
-              }}
-            >
+              }}>
               {showAddForm ? "Cancel" : "+ Add Question"}
             </button>
           </div>
 
           {(showAddForm || editingQuestion) && (
-            <form 
-              onSubmit={editingQuestion ? handleUpdateQuestion : handleAddQuestion} 
-              className="question-form card"
-            >
+            <form
+              onSubmit={
+                editingQuestion ? handleUpdateQuestion : handleAddQuestion
+              }
+              className="question-form card">
               <h3 className="form-title">
                 {editingQuestion ? "Edit Question" : "Add New Question"}
               </h3>
@@ -1625,11 +1621,10 @@ const QuestionManager = ({ olympiad, onClose }) => {
               <div className="form-actions">
                 {editingQuestion ? (
                   <>
-                    <button 
-                      type="button" 
-                      className="button-secondary" 
-                      onClick={handleCancelEdit}
-                    >
+                    <button
+                      type="button"
+                      className="button-secondary"
+                      onClick={handleCancelEdit}>
                       Cancel
                     </button>
                     <button type="submit" className="button-primary">
@@ -1638,11 +1633,10 @@ const QuestionManager = ({ olympiad, onClose }) => {
                   </>
                 ) : (
                   <>
-                    <button 
-                      type="button" 
-                      className="button-secondary" 
-                      onClick={() => setShowAddForm(false)}
-                    >
+                    <button
+                      type="button"
+                      className="button-secondary"
+                      onClick={() => setShowAddForm(false)}>
                       Cancel
                     </button>
                     <button type="submit" className="button-primary">
@@ -1671,15 +1665,13 @@ const QuestionManager = ({ olympiad, onClose }) => {
                       <button
                         className="button-icon"
                         onClick={() => handleEditQuestion(q)}
-                        title="Edit question"
-                      >
+                        title="Edit question">
                         ✏️ Edit
                       </button>
                       <button
                         className="button-icon button-danger"
                         onClick={() => handleDeleteQuestion(q._id)}
-                        title="Delete question"
-                      >
+                        title="Delete question">
                         🗑️ Delete
                       </button>
                     </div>
@@ -1692,8 +1684,7 @@ const QuestionManager = ({ olympiad, onClose }) => {
                           key={optIndex}
                           className={`option ${
                             opt === q.correctAnswer ? "correct" : ""
-                          }`}
-                        >
+                          }`}>
                           {String.fromCharCode(65 + optIndex)}. {opt}
                         </div>
                       ))}

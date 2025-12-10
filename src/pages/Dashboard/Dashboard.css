@@ -134,12 +134,28 @@
   color: var(--text-primary);
   transition: all 0.3s ease;
   margin-bottom: 4px;
+  position: relative;
   cursor: pointer;
 }
 
 .olympiad-card:hover .olympiad-title {
   color: var(--accent);
   text-shadow: 0 0 8px rgba(0, 255, 0, 0.3);
+}
+
+.olympiad-title::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.olympiad-card:hover .olympiad-title::after {
+  width: 100%;
 }
 
 .status-badge {

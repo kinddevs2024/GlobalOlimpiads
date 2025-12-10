@@ -62,9 +62,7 @@ export const authAPI = {
     if (data instanceof FormData) {
       return api.put("/auth/profile", data);
     } else {
-      // Ensure we're sending valid JSON
-      const jsonData = JSON.parse(JSON.stringify(data));
-      return api.put("/auth/profile", jsonData, {
+      return api.put("/auth/profile", data, {
         headers: {
           "Content-Type": "application/json",
         },
@@ -100,15 +98,6 @@ export const olympiadAPI = {
   uploadCameraCapture: (formData) => {
     // formData should include: olympiadId, captureType ('camera' | 'screen'), image (File)
     return api.post("/olympiads/camera-capture", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-  },
-  uploadRealTimeCapture: (formData) => {
-    // formData should include: olympiadId, cameraImage, screenImage, timestamp
-    // Sends real-time captures during olympiad (every 1 second)
-    return api.post("/olympiads/real-time-capture", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -320,14 +309,6 @@ export const schoolTeacherAPI = {
     if (olympiadId) params.append("olympiadId", olympiadId);
     const query = params.toString();
     return api.get(`/school-teacher/captures${query ? `?${query}` : ""}`);
-  },
-};
-
-// Monitoring endpoints
-export const monitoringAPI = {
-  // Get active students for monitoring (filtered by role)
-  getActiveStudents: (olympiadId) => {
-    return api.get(`/monitoring/active-students?olympiadId=${olympiadId}`);
   },
 };
 

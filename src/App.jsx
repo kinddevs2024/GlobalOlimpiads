@@ -24,8 +24,8 @@ import ProfileEdit from "./pages/ProfileEdit";
 import CompleteProfile from "./pages/CompleteProfile";
 import ResolterPanel from "./pages/ResolterPanel";
 import SchoolTeacherPanel from "./pages/SchoolTeacherPanel";
-import RealTimeMonitoring from "./pages/RealTimeMonitoring/RealTimeMonitoring";
 import { USER_ROLES, GOOGLE_CLIENT_ID } from "./utils/constants";
+import ErrorBoundary from "./components/ErrorBoundary";
 import "./styles/globals.css";
 import "./styles/animations.css";
 
@@ -139,24 +139,6 @@ const AppRoutes = () => {
       />
 
       <Route
-        path="/monitoring"
-        element={
-          <ProtectedRoute>
-            <RealTimeMonitoring />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/monitoring/:olympiadId"
-        element={
-          <ProtectedRoute>
-            <RealTimeMonitoring />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
         path="/profile"
         element={
           <ProtectedRoute>
@@ -191,21 +173,25 @@ const AppRoutes = () => {
 
 function App() {
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <AuthProvider>
-        <SocketProvider>
-          <Router>
-            <ScrollToTop />
-            <div className="app">
-              <Navbar />
-              <main className="main-content">
-                <AppRoutes />
-              </main>
-            </div>
-          </Router>
-        </SocketProvider>
-      </AuthProvider>
-    </GoogleOAuthProvider>
+    <ErrorBoundary>
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+        <AuthProvider>
+          <SocketProvider>
+            <Router>
+              <ScrollToTop />
+              <div className="app">
+                <Navbar />
+                <main className="main-content">
+                  <ErrorBoundary>
+                    <AppRoutes />
+                  </ErrorBoundary>
+                </main>
+              </div>
+            </Router>
+          </SocketProvider>
+        </AuthProvider>
+      </GoogleOAuthProvider>
+    </ErrorBoundary>
   );
 }
 

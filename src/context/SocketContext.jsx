@@ -6,15 +6,8 @@ const SocketContext = createContext(null);
 
 export const useSocket = () => {
   const context = useContext(SocketContext);
-  // Return a default context if not available instead of throwing
   if (!context) {
-    return {
-      socket: null,
-      connected: false,
-      emit: () => {},
-      on: () => {},
-      off: () => {},
-    };
+    throw new Error('useSocket must be used within SocketProvider');
   }
   return context;
 };
@@ -29,15 +22,34 @@ export const SocketProvider = ({ children }) => {
       const socketInstance = connectSocket();
       setSocket(socketInstance);
 
-      socketInstance.on('connect', () => {
+      const onConnect = () => {
         setConnected(true);
-      });
+      };
 
-      socketInstance.on('disconnect', () => {
+      const onDisconnect = (reason) => {
         setConnected(false);
-      });
+        // Log disconnect reason in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Socket disconnected:', reason);
+        }
+      };
+
+      const onError = (error) => {
+        console.error('Socket error:', error);
+        setConnected(false);
+      };
+
+      socketInstance.on('connect', onConnect);
+      socketInstance.on('disconnect', onDisconnect);
+      socketInstance.on('error', onError);
 
       return () => {
+        // Clean up event listeners to prevent memory leaks
+        socketInstance.off('connect', onConnect);
+        socketInstance.off('disconnect', onDisconnect);
+        socketInstance.off('error', onError);
+        
+        // Disconnect socket
         disconnectSocket();
         setSocket(null);
         setConnected(false);
@@ -56,8 +68,14 @@ export const SocketProvider = ({ children }) => {
   };
 
   const on = (event, callback) => {
-    if (socket) {
+    if (socket && connected) {
       socket.on(event, callback);
+      // Return cleanup function
+      return () => {
+        if (socket) {
+          socket.off(event, callback);
+        }
+      };
     }
   };
 

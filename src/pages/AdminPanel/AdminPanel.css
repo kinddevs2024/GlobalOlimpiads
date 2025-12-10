@@ -152,7 +152,8 @@
 .olympiad-card-header {
   display: flex;
   gap: 16px;
-  align-items: flex-start;
+  align-items: flex-between;
+  justify-content: space-between;
 }
 
 .olympiad-logo-container {

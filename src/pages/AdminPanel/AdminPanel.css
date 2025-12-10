@@ -12,17 +12,32 @@
 }
 
 .admin-header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
   margin-bottom: 40px;
   animation: fadeIn 0.5s ease;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .admin-header {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+  
+  .admin-header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 
 .admin-header-actions {
   display: flex;
   gap: 12px;
   align-items: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .status-filter {
@@ -34,6 +49,48 @@
   font-size: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 140px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+.admin-header-actions .button-primary,
+.header-create-button {
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 10px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--accent);
+  background: transparent;
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+  border-radius: 8px;
+}
+
+.admin-header-actions .button-primary:hover,
+.header-create-button:hover {
+  background: var(--accent);
+  color: var(--bg-primary);
+  box-shadow: 0 0 25px var(--glow);
+  transform: translateY(-2px);
+}
+
+.header-create-button {
+  font-weight: 700;
+  letter-spacing: 0.5px;
 }
 
 .status-filter:focus {
@@ -78,17 +135,55 @@
 }
 
 .admin-olympiads {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 20px;
+  align-items: start;
 }
 
 .admin-olympiad-card {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
   padding: 24px;
   animation: fadeIn 0.5s ease;
+  gap: 16px;
+}
+
+.olympiad-card-header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.olympiad-logo-container {
+  flex-shrink: 0;
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.olympiad-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.logo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
 }
 
 .olympiad-title-row {
@@ -96,6 +191,11 @@
   align-items: center;
   gap: 12px;
   margin-bottom: 8px;
+}
+
+.olympiad-info {
+  flex: 1;
+  min-width: 0; /* Allow text to wrap */
 }
 
 .olympiad-info h3 {
@@ -140,13 +240,40 @@
 .olympiad-actions {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+
+@media (max-width: 1024px) {
+  .admin-olympiads {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
 }
 
 @media (max-width: 768px) {
   .admin-header {
-    flex-direction: column;
-    gap: 20px;
-    align-items: stretch;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  
+  .admin-title {
+    font-size: 32px;
+  }
+  
+  .admin-header-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  
+  .status-filter {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+  
+  .admin-olympiads {
+    grid-template-columns: 1fr;
   }
   
   .admin-olympiad-card {
@@ -155,12 +282,18 @@
     align-items: stretch;
   }
   
+  .olympiad-logo-container {
+    width: 60px;
+    height: 60px;
+  }
+  
   .olympiad-actions {
     width: 100%;
+    flex-direction: column;
   }
   
   .olympiad-actions button {
-    flex: 1;
+    width: 100%;
   }
 }
 

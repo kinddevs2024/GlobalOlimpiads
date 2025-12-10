@@ -28,7 +28,7 @@ const QuestionCard = ({
       </div>
       
       <div className="question-text">
-        {question.questionText}
+        {question.question || question.questionText}
       </div>
 
       {question.type === 'multiple-choice' && question.options ? (

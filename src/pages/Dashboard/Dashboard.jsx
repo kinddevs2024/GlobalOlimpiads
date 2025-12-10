@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { olympiadAPI, adminAPI } from "../services/api";
+import { olympiadAPI, adminAPI } from "../../services/api";
 import {
   formatDate,
   isOlympiadActive,
   isOlympiadUpcoming,
   isOlympiadEnded,
-} from "../utils/helpers";
-import { OLYMPIAD_TYPES, USER_ROLES } from "../utils/constants";
-import { useAuth } from "../context/AuthContext";
+} from "../../utils/helpers";
+import { OLYMPIAD_TYPES, USER_ROLES } from "../../utils/constants";
+import { useAuth } from "../../context/AuthContext";
 import "./Dashboard.css";
 
 const Dashboard = () => {

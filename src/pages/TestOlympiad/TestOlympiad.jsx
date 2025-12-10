@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { olympiadAPI } from '../services/api';
-import { useSocket } from '../context/SocketContext';
-import Timer from '../components/Timer';
-import QuestionCard from '../components/QuestionCard';
-import ProctoringMonitor from '../components/ProctoringMonitor';
-import NotificationToast from '../components/NotificationToast';
-import { useAuth } from '../context/AuthContext';
-import { getTimeRemaining } from '../utils/helpers';
+import { olympiadAPI } from '../../services/api';
+import { useSocket } from '../../context/SocketContext';
+import Timer from '../../components/Timer';
+import QuestionCard from '../../components/QuestionCard';
+import ProctoringMonitor from '../../components/ProctoringMonitor';
+import NotificationToast from '../../components/NotificationToast';
+import { useAuth } from '../../context/AuthContext';
+import { getTimeRemaining, getTimeRemainingFromDuration } from '../../utils/helpers';
 import './TestOlympiad.css';
 
 const TestOlympiad = () => {
@@ -39,6 +39,58 @@ const TestOlympiad = () => {
     }
   }, [id, on]);
 
+  // Update timer every second based on duration
+  useEffect(() => {
+    if (!olympiad || !id || submitted) return;
+
+    const startTime = localStorage.getItem(`olympiad_${id}_startTime`);
+    const duration = olympiad.duration || 3600; // Duration in seconds (e.g., 3600 = 60 minutes)
+
+    if (!startTime || !duration) {
+      // If no start time, try to initialize it now
+      if (olympiad.duration) {
+        const now = new Date().toISOString();
+        localStorage.setItem(`olympiad_${id}_startTime`, now);
+        setTimeRemaining(duration);
+      }
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const remaining = getTimeRemainingFromDuration(duration, startTime);
+      setTimeRemaining(remaining);
+      
+      // Auto-submit when time expires
+      if (remaining <= 0 && !submitted) {
+        handleTimeExpire();
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [olympiad, id, submitted]);
+
+  // Load saved answers from localStorage on mount
+  useEffect(() => {
+    if (id) {
+      const savedAnswers = localStorage.getItem(`olympiad_${id}_answers`);
+      if (savedAnswers) {
+        try {
+          const parsedAnswers = JSON.parse(savedAnswers);
+          setAnswers(parsedAnswers);
+        } catch (error) {
+          console.error('Error loading saved answers:', error);
+        }
+      }
+    }
+  }, [id]);
+
+  // Auto-save answers to localStorage whenever they change
+  useEffect(() => {
+    if (id && Object.keys(answers).length > 0) {
+      localStorage.setItem(`olympiad_${id}_answers`, JSON.stringify(answers));
+    }
+  }, [answers, id]);
+
   const fetchOlympiad = async () => {
     try {
       const response = await olympiadAPI.getById(id);
@@ -54,8 +106,19 @@ const TestOlympiad = () => {
         // navigate(`/olympiad/${id}/start`);
       }
       
-      const remaining = getTimeRemaining(olympiadData.endTime);
-      setTimeRemaining(remaining);
+      // Calculate remaining time based on duration from start time
+      const startTime = localStorage.getItem(`olympiad_${id}_startTime`);
+      const duration = olympiadData.duration || 3600; // Default to 60 minutes (3600 seconds)
+      
+      if (startTime && duration) {
+        // Use duration-based timer (countdown from when user started)
+        const remaining = getTimeRemainingFromDuration(duration, startTime);
+        setTimeRemaining(remaining);
+      } else {
+        // Fallback to endTime-based timer if no start time recorded
+        const remaining = getTimeRemaining(olympiadData.endTime);
+        setTimeRemaining(remaining);
+      }
     } catch (error) {
       setNotification({ message: 'Failed to load olympiad', type: 'error' });
       navigate('/dashboard');
@@ -88,6 +151,8 @@ const TestOlympiad = () => {
       try {
         await olympiadAPI.submit(id, { answers });
         setSubmitted(true);
+        // Clear saved answers after successful submission
+        localStorage.removeItem(`olympiad_${id}_answers`);
         setNotification({ message: 'Answers submitted successfully!', type: 'success' });
         setTimeout(() => {
           navigate(`/olympiad/${id}/results`);
@@ -129,6 +194,23 @@ const TestOlympiad = () => {
 
   const currentQuestion = questions[currentQuestionIndex];
   const answeredCount = Object.keys(answers).length;
+
+  // Show message if no questions available
+  if (questions.length === 0) {
+    return (
+      <div className="test-olympiad-page">
+        <div className="olympiad-container">
+          <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+            <h2>No Questions Available</h2>
+            <p>This olympiad doesn't have any questions yet.</p>
+            <button className="button-primary" onClick={() => navigate('/dashboard')}>
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="test-olympiad-page">
@@ -187,7 +269,8 @@ const TestOlympiad = () => {
           ))}
         </div>
 
-        {currentQuestion && (
+        {/* Question Card - This is where the question appears */}
+        {currentQuestion ? (
           <QuestionCard
             question={currentQuestion}
             questionNumber={currentQuestionIndex + 1}
@@ -196,6 +279,10 @@ const TestOlympiad = () => {
             onAnswerChange={handleAnswerChange}
             disabled={!isRecording || submitted}
           />
+        ) : (
+          <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+            <p>Question not found. Please try selecting a different question.</p>
+          </div>
         )}
 
         <div className="olympiad-actions">

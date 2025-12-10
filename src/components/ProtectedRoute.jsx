@@ -1,18 +1,20 @@
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { USER_ROLES } from '../utils/constants';
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { USER_ROLES } from "../utils/constants";
 
 const ProtectedRoute = ({ children, requiredRole = null }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh' 
-      }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
         <div className="loading-spinner"></div>
       </div>
     );
@@ -23,17 +25,16 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   }
 
   if (requiredRole) {
-    const roleHierarchy = {
-      [USER_ROLES.STUDENT]: 1,
-      [USER_ROLES.ADMIN]: 2,
-      [USER_ROLES.OWNER]: 3
-    };
-
-    const userRoleLevel = roleHierarchy[user.role] || 0;
-    const requiredRoleLevel = roleHierarchy[requiredRole] || 0;
-
-    if (userRoleLevel < requiredRoleLevel) {
-      return <Navigate to="/dashboard" replace />;
+    // For ADMIN role, also allow OWNER (owner has admin privileges)
+    if (requiredRole === USER_ROLES.ADMIN) {
+      if (user.role !== USER_ROLES.ADMIN && user.role !== USER_ROLES.OWNER) {
+        return <Navigate to="/dashboard" replace />;
+      }
+    } else {
+      // For other roles, check exact match
+      if (user.role !== requiredRole) {
+        return <Navigate to="/dashboard" replace />;
+      }
     }
   }
 
@@ -41,4 +42,3 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
 };
 
 export default ProtectedRoute;
-

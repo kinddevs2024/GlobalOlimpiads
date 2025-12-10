@@ -95,7 +95,7 @@ export const AuthProvider = ({ children }) => {
       setUserState(user);
       setIsAuthenticated(true);
       
-      return { success: true };
+      return { success: true, user };
     } catch (error) {
       console.error('Google login error:', error);
       const errorMessage = error.response?.data?.message || 
@@ -115,6 +115,11 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
   };
 
+  const updateUser = (userData) => {
+    setUserState(userData);
+    setUser(userData);
+  };
+
   const value = {
     user,
     loading,
@@ -122,7 +127,8 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     loginWithGoogle,
-    logout
+    logout,
+    setUser: updateUser
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

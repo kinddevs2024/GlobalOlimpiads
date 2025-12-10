@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { olympiadAPI } from '../services/api';
-import { useSocket } from '../context/SocketContext';
-import Timer from '../components/Timer';
-import ProctoringMonitor from '../components/ProctoringMonitor';
-import NotificationToast from '../components/NotificationToast';
-import { useAuth } from '../context/AuthContext';
-import { getTimeRemaining } from '../utils/helpers';
+import { olympiadAPI } from '../../services/api';
+import { useSocket } from '../../context/SocketContext';
+import Timer from '../../components/Timer';
+import ProctoringMonitor from '../../components/ProctoringMonitor';
+import NotificationToast from '../../components/NotificationToast';
+import { useAuth } from '../../context/AuthContext';
+import { getTimeRemaining, getTimeRemainingFromDuration } from '../../utils/helpers';
 import './EssayOlympiad.css';
 
 const EssayOlympiad = () => {
@@ -37,6 +37,58 @@ const EssayOlympiad = () => {
     }
   }, [id, on]);
 
+  // Update timer every second based on duration
+  useEffect(() => {
+    if (!olympiad || !id || submitted) return;
+
+    const startTime = localStorage.getItem(`olympiad_${id}_startTime`);
+    const duration = olympiad.duration || 3600; // Duration in seconds (e.g., 3600 = 60 minutes)
+
+    if (!startTime || !duration) {
+      // If no start time, try to initialize it now
+      if (olympiad.duration) {
+        const now = new Date().toISOString();
+        localStorage.setItem(`olympiad_${id}_startTime`, now);
+        setTimeRemaining(duration);
+      }
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const remaining = getTimeRemainingFromDuration(duration, startTime);
+      setTimeRemaining(remaining);
+      
+      // Auto-submit when time expires
+      if (remaining <= 0 && !submitted) {
+        handleTimeExpire();
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [olympiad, id, submitted]);
+
+  // Load saved answers from localStorage on mount
+  useEffect(() => {
+    if (id) {
+      const savedAnswers = localStorage.getItem(`olympiad_${id}_essay_answers`);
+      if (savedAnswers) {
+        try {
+          const parsedAnswers = JSON.parse(savedAnswers);
+          setAnswers(parsedAnswers);
+        } catch (error) {
+          console.error('Error loading saved answers:', error);
+        }
+      }
+    }
+  }, [id]);
+
+  // Auto-save answers to localStorage whenever they change
+  useEffect(() => {
+    if (id && Object.keys(answers).length > 0) {
+      localStorage.setItem(`olympiad_${id}_essay_answers`, JSON.stringify(answers));
+    }
+  }, [answers, id]);
+
   const fetchOlympiad = async () => {
     try {
       const response = await olympiadAPI.getById(id);
@@ -44,8 +96,19 @@ const EssayOlympiad = () => {
       setOlympiad(olympiadData);
       setQuestions(olympiadData.questions || []);
       
-      const remaining = getTimeRemaining(olympiadData.endTime);
-      setTimeRemaining(remaining);
+      // Calculate remaining time based on duration from start time
+      const startTime = localStorage.getItem(`olympiad_${id}_startTime`);
+      const duration = olympiadData.duration || 3600; // Default to 60 minutes (3600 seconds)
+      
+      if (startTime && duration) {
+        // Use duration-based timer (countdown from when user started)
+        const remaining = getTimeRemainingFromDuration(duration, startTime);
+        setTimeRemaining(remaining);
+      } else {
+        // Fallback to endTime-based timer if no start time recorded
+        const remaining = getTimeRemaining(olympiadData.endTime);
+        setTimeRemaining(remaining);
+      }
     } catch (error) {
       setNotification({ message: 'Failed to load olympiad', type: 'error' });
       navigate('/dashboard');
@@ -70,6 +133,8 @@ const EssayOlympiad = () => {
       try {
         await olympiadAPI.submit(id, { answers });
         setSubmitted(true);
+        // Clear saved answers after successful submission
+        localStorage.removeItem(`olympiad_${id}_essay_answers`);
         setNotification({ message: 'Essay submitted successfully!', type: 'success' });
         setTimeout(() => {
           navigate(`/olympiad/${id}/results`);
@@ -179,7 +244,7 @@ const EssayOlympiad = () => {
             </div>
             
             <div className="question-text">
-              {currentQuestion.questionText}
+              {currentQuestion.question || currentQuestion.questionText}
             </div>
 
             <div className="essay-editor">

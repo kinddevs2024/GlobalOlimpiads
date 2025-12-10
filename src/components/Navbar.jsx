@@ -34,7 +34,16 @@ const Navbar = () => {
             <Link to="/owner" className="navbar-link">Owner Panel</Link>
           ) : null}
           
+          {user?.role === USER_ROLES.RESOLTER ? (
+            <Link to="/resolter" className="navbar-link">Resolter Panel</Link>
+          ) : null}
+          
+          {user?.role === USER_ROLES.SCHOOL_TEACHER ? (
+            <Link to="/school-teacher" className="navbar-link">Teacher Panel</Link>
+          ) : null}
+          
           <Link to="/results" className="navbar-link">Results</Link>
+          <Link to="/profile" className="navbar-link">Profile</Link>
           
           <div className="navbar-user">
             <span className="navbar-username">{user?.email}</span>

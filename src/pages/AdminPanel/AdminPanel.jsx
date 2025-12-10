@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { adminAPI, olympiadAPI } from "../services/api";
-import NotificationToast from "../components/NotificationToast";
-import { formatDate } from "../utils/helpers";
+import { adminAPI, olympiadAPI } from "../../services/api";
+import NotificationToast from "../../components/NotificationToast";
+import { formatDate } from "../../utils/helpers";
 import "./AdminPanel.css";
 
 // Question Form Component for Step 3
@@ -217,6 +217,7 @@ const AdminPanel = () => {
     endTime: "",
     duration: 60, // in minutes - will convert to seconds
     status: "draft", // draft, published, unpublished
+    olympiadLogo: null, // Logo file
   });
 
   const [statusFilter, setStatusFilter] = useState("all"); // all, published, unpublished, draft
@@ -248,6 +249,33 @@ const AdminPanel = () => {
   // Step 2: Create olympiad with basic info
   const handleCreateOlympiad = async (e) => {
     e.preventDefault();
+
+    // Validate required fields
+    if (!formData.title || !formData.title.trim()) {
+      setNotification({
+        message: "Please provide a title for the olympiad",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!formData.type) {
+      setNotification({
+        message: "Please select an olympiad type",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!formData.subject) {
+      setNotification({
+        message: "Please select a subject",
+        type: "error",
+      });
+      return;
+    }
+
+    setLoading(true);
     try {
       // Convert datetime-local to ISO 8601 format with timezone
       const formatDateTime = (dateTimeLocal) => {
@@ -255,7 +283,7 @@ const AdminPanel = () => {
         return new Date(dateTimeLocal).toISOString();
       };
 
-      // Prepare data for backend
+      // Prepare data for backend - create olympiad first without logo
       const olympiadData = {
         title: formData.title,
         description: formData.description,
@@ -267,24 +295,91 @@ const AdminPanel = () => {
         status: formData.status,
       };
 
+      // Create olympiad first
       const response = await adminAPI.createOlympiad(olympiadData);
-      setCreatedOlympiadId(response.data._id);
+      console.log("Create olympiad response:", response.data);
+
+      // Try multiple possible response structures
+      const newOlympiadId =
+        response.data?._id ||
+        response.data?.olympiad?._id ||
+        response.data?.id ||
+        response.data?.olympiad?.id;
+
+      if (!newOlympiadId) {
+        console.error("No olympiad ID in response:", response.data);
+        setNotification({
+          message:
+            "Olympiad created but ID not received. Please refresh and try again.",
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Now upload logo if one was selected, using the newly created olympiad ID
+      if (formData.olympiadLogo) {
+        try {
+          console.log("Uploading logo for olympiad:", newOlympiadId);
+          const logoResponse = await adminAPI.uploadOlympiadLogo(
+            formData.olympiadLogo,
+            newOlympiadId
+          );
+          console.log("Logo upload response:", logoResponse.data);
+
+          // Logo should now be associated with the olympiad via backend
+          setNotification({
+            message: "Olympiad created and logo uploaded successfully!",
+            type: "success",
+          });
+        } catch (logoError) {
+          console.error(
+            "Logo upload error:",
+            logoError.response?.data || logoError
+          );
+          // Don't fail the whole process if logo upload fails
+          // Olympiad was created successfully, user can upload logo later
+          setNotification({
+            message:
+              "Olympiad created successfully, but logo upload failed. You can update the logo later. " +
+              (logoError.response?.data?.message ||
+                logoError.response?.data?.error ||
+                ""),
+            type: "warning",
+          });
+        }
+      } else {
+        setNotification({
+          message: "Olympiad created! Now add questions.",
+          type: "success",
+        });
+      }
+
+      setCreatedOlympiadId(newOlympiadId);
       setCurrentStep(3); // Move to questions step
-      setNotification({
-        message: "Olympiad created! Now add questions.",
-        type: "success",
-      });
     } catch (error) {
+      console.error("Error creating olympiad:", error);
       setNotification({
         message: error.response?.data?.message || "Failed to create olympiad",
         type: "error",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   // Step 3: Add question
   const handleAddQuestion = async (questionData) => {
     try {
+      // Validate that olympiad was created successfully
+      if (!createdOlympiadId) {
+        setNotification({
+          message: "Please create the olympiad first before adding questions",
+          type: "error",
+        });
+        return;
+      }
+
       const questionPayload = {
         olympiadId: createdOlympiadId,
         ...questionData,
@@ -320,6 +415,7 @@ const AdminPanel = () => {
       endTime: "",
       duration: 60,
       status: "draft",
+      olympiadLogo: null,
     });
     fetchOlympiads();
     setNotification({
@@ -344,6 +440,7 @@ const AdminPanel = () => {
       endTime: "",
       duration: 60,
       status: "draft",
+      olympiadLogo: null,
     });
   };
 
@@ -375,6 +472,7 @@ const AdminPanel = () => {
         endTime: formatToLocalDateTime(olympiadData.endTime),
         duration: Math.floor((olympiadData.duration || 3600) / 60), // Convert seconds to minutes
         status: olympiadData.status || "draft",
+        olympiadLogo: null, // Logo will be loaded from backend URL if exists
       });
       setShowCreateForm(true);
       setCurrentStep(2); // Skip type selection for editing
@@ -386,12 +484,14 @@ const AdminPanel = () => {
   // Update olympiad
   const handleUpdateOlympiad = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
       const formatDateTime = (dateTimeLocal) => {
         if (!dateTimeLocal) return "";
         return new Date(dateTimeLocal).toISOString();
       };
 
+      // Prepare data for backend - update olympiad first
       const olympiadData = {
         title: formData.title,
         description: formData.description,
@@ -403,11 +503,53 @@ const AdminPanel = () => {
         status: formData.status,
       };
 
+      // Keep existing logo URL if no new logo is selected
+      if (!formData.olympiadLogo || !(formData.olympiadLogo instanceof File)) {
+        const existingLogo = editingOlympiad?.olympiadLogo;
+        if (existingLogo) {
+          olympiadData.olympiadLogo = existingLogo;
+        }
+      }
+
+      // Update olympiad first
       await adminAPI.updateOlympiad(editingOlympiad, olympiadData);
-      setNotification({
-        message: "Olympiad updated successfully",
-        type: "success",
-      });
+
+      // Then upload new logo if one was selected
+      if (formData.olympiadLogo && formData.olympiadLogo instanceof File) {
+        try {
+          console.log("Uploading logo for olympiad:", editingOlympiad);
+          const logoResponse = await adminAPI.uploadOlympiadLogo(
+            formData.olympiadLogo,
+            editingOlympiad
+          );
+          console.log("Logo upload response:", logoResponse.data);
+
+          setNotification({
+            message: "Olympiad updated and logo uploaded successfully",
+            type: "success",
+          });
+        } catch (logoError) {
+          console.error(
+            "Logo upload error:",
+            logoError.response?.data || logoError
+          );
+          // Don't fail the whole process if logo upload fails
+          // Olympiad was updated successfully, user can upload logo later
+          setNotification({
+            message:
+              "Olympiad updated successfully, but logo upload failed. You can try uploading the logo again. " +
+              (logoError.response?.data?.message ||
+                logoError.response?.data?.error ||
+                ""),
+            type: "warning",
+          });
+        }
+      } else {
+        setNotification({
+          message: "Olympiad updated successfully",
+          type: "success",
+        });
+      }
       setEditingOlympiad(null);
       setShowCreateForm(false);
       setFormData({
@@ -427,6 +569,8 @@ const AdminPanel = () => {
         message: error.response?.data?.message || "Failed to update olympiad",
         type: "error",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -527,7 +671,7 @@ const AdminPanel = () => {
               <option value="draft">Draft</option>
             </select>
             <button
-              className="button-primary"
+              className="button-primary header-create-button"
               onClick={() => setShowCreateForm(!showCreateForm)}
             >
               {showCreateForm ? "Cancel" : "+ Create Olympiad"}
@@ -722,6 +866,41 @@ const AdminPanel = () => {
                   </div>
 
                   <div className="form-row">
+                    <div className="form-group" style={{ width: "100%" }}>
+                      <label>Olympiad Logo</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            olympiadLogo: e.target.files[0] || null,
+                          })
+                        }
+                        className="file-input"
+                      />
+                      {formData.olympiadLogo && (
+                        <div
+                          className="file-preview"
+                          style={{ marginTop: "12px" }}
+                        >
+                          <img
+                            src={URL.createObjectURL(formData.olympiadLogo)}
+                            alt="Logo preview"
+                            style={{
+                              maxWidth: "200px",
+                              maxHeight: "200px",
+                              borderRadius: "8px",
+                              border: "2px solid var(--border)",
+                              objectFit: "cover",
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="form-row">
                     <div className="form-group">
                       <label>Duration (minutes)</label>
                       <input
@@ -878,54 +1057,121 @@ const AdminPanel = () => {
         )}
 
         <div className="admin-olympiads">
-          {getFilteredOlympiads().map((olympiad) => (
-            <div key={olympiad._id} className="admin-olympiad-card card">
-              <div className="olympiad-info">
-                <div className="olympiad-title-row">
-                  <h3>{olympiad.title}</h3>
-                  {getStatusBadge(olympiad.status || "draft")}
+          {getFilteredOlympiads().map((olympiad) => {
+            // Get logo URL - handle both relative and absolute URLs
+            // Check multiple possible field names for logo
+            const logoField =
+              olympiad.olympiadLogo ||
+              olympiad.logo ||
+              olympiad.photo ||
+              olympiad.image;
+
+            const getLogoUrl = (logo) => {
+              if (!logo) return null;
+              // If it's already a full URL (starts with http), return as is
+              if (logo.startsWith("http://") || logo.startsWith("https://")) {
+                return logo;
+              }
+              // If it starts with /api, it's already correct for proxy
+              if (logo.startsWith("/api")) {
+                return logo;
+              }
+              // Otherwise, prepend /api if in dev mode, or construct full URL
+              const API_BASE_URL =
+                import.meta.env.VITE_API_URL ||
+                (import.meta.env.DEV ? "/api" : "http://localhost:3000/api");
+              return logo.startsWith("/")
+                ? `${API_BASE_URL}${logo}`
+                : `${API_BASE_URL}/${logo}`;
+            };
+
+            const logoUrl = getLogoUrl(logoField);
+
+            // Debug: Log olympiad data to see what fields are available
+            console.log("Olympiad data:", {
+              title: olympiad.title,
+              hasLogoField: !!logoField,
+              logoField: logoField,
+              logoUrl: logoUrl,
+              allFields: Object.keys(olympiad),
+            });
+
+            return (
+              <div key={olympiad._id} className="admin-olympiad-card card">
+                <div className="olympiad-card-header">
+                  <div className="olympiad-logo-container">
+                    {logoUrl ? (
+                      <img
+                        src={logoUrl}
+                        alt={`${olympiad.title} logo`}
+                        className="olympiad-logo"
+                        onError={(e) => {
+                          // Show placeholder if image fails to load
+                          e.target.style.display = "none";
+                          const container = e.target.parentElement;
+                          if (
+                            container &&
+                            !container.querySelector(".logo-placeholder")
+                          ) {
+                            const placeholder = document.createElement("div");
+                            placeholder.className = "logo-placeholder";
+                            placeholder.textContent = "📋";
+                            container.appendChild(placeholder);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div className="logo-placeholder">📋</div>
+                    )}
+                  </div>
+                  <div className="olympiad-info">
+                    <div className="olympiad-title-row">
+                      <h3>{olympiad.title}</h3>
+                      {getStatusBadge(olympiad.status || "draft")}
+                    </div>
+                    <div className="olympiad-meta">
+                      <span>{olympiad.subject}</span>
+                      <span>•</span>
+                      <span>{olympiad.type}</span>
+                      <span>•</span>
+                      <span>{formatDate(olympiad.startTime)}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="olympiad-meta">
-                  <span>{olympiad.subject}</span>
-                  <span>•</span>
-                  <span>{olympiad.type}</span>
-                  <span>•</span>
-                  <span>{formatDate(olympiad.startTime)}</span>
+                <div className="olympiad-actions">
+                  <button
+                    className="button-secondary"
+                    onClick={() => handleToggleStatus(olympiad)}
+                    title={
+                      olympiad.status === "published"
+                        ? "Make Unvisible"
+                        : "Make Visible"
+                    }
+                  >
+                    {olympiad.status === "published" ? "🔒 Hide" : "👁️ Show"}
+                  </button>
+                  <button
+                    className="button-secondary"
+                    onClick={() => handleEdit(olympiad)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="button-secondary"
+                    onClick={() => handleManageQuestions(olympiad)}
+                  >
+                    Questions
+                  </button>
+                  <button
+                    className="button-danger"
+                    onClick={() => handleDelete(olympiad._id)}
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
-              <div className="olympiad-actions">
-                <button
-                  className="button-secondary"
-                  onClick={() => handleToggleStatus(olympiad)}
-                  title={
-                    olympiad.status === "published"
-                      ? "Make Unvisible"
-                      : "Make Visible"
-                  }
-                >
-                  {olympiad.status === "published" ? "🔒 Hide" : "👁️ Show"}
-                </button>
-                <button
-                  className="button-secondary"
-                  onClick={() => handleEdit(olympiad)}
-                >
-                  Edit
-                </button>
-                <button
-                  className="button-secondary"
-                  onClick={() => handleManageQuestions(olympiad)}
-                >
-                  Questions
-                </button>
-                <button
-                  className="button-danger"
-                  onClick={() => handleDelete(olympiad._id)}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

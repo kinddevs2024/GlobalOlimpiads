@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGoogleLogin } from "@react-oauth/google";
-import { useAuth } from "../context/AuthContext";
-import NotificationToast from "../components/NotificationToast";
-import { testAPIConnection } from "../utils/apiTest";
+import { useAuth } from "../../context/AuthContext";
+import NotificationToast from "../../components/NotificationToast";
+import { testAPIConnection } from "../../utils/apiTest";
 import "./Auth.css";
 
 const Auth = () => {
@@ -11,8 +11,9 @@ const Auth = () => {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    name: "",
     confirmPassword: "",
+    firstName: "",
+    secondName: "",
   });
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -68,15 +69,38 @@ const Auth = () => {
       if (isLogin) {
         result = await login(formData.email, formData.password);
       } else {
-        result = await register({
+        // Simple registration with only essential fields
+        // Backend expects 'name' field, not 'firstName' and 'secondName'
+        const fullName = `${formData.firstName || ""} ${
+          formData.secondName || ""
+        }`.trim();
+        if (!fullName) {
+          setNotification({
+            message: "First name and second name are required",
+            type: "error",
+          });
+          setLoading(false);
+          return;
+        }
+
+        const registerData = {
           email: formData.email,
           password: formData.password,
-          name: formData.name,
-        });
+          name: fullName,
+          firstName: formData.firstName || "",
+          secondName: formData.secondName || "",
+        };
+
+        result = await register(registerData);
       }
 
       if (result.success) {
-        navigate("/dashboard");
+        // Redirect to complete profile page after registration
+        if (!isLogin) {
+          navigate("/complete-profile");
+        } else {
+          navigate("/dashboard");
+        }
       } else {
         setNotification({ message: result.error, type: "error" });
       }
@@ -116,7 +140,22 @@ const Auth = () => {
       const result = await loginWithGoogle(tokenResponse.access_token);
 
       if (result.success) {
-        navigate("/dashboard");
+        // Check if profile is complete, redirect accordingly
+        const user = result.user;
+        const hasCompleteInfo =
+          user &&
+          user.name &&
+          user.tel &&
+          user.address &&
+          user.dateBorn &&
+          user.gender &&
+          (user.role !== "student" || (user.schoolName && user.schoolId));
+
+        if (!hasCompleteInfo) {
+          navigate("/complete-profile");
+        } else {
+          navigate("/dashboard");
+        }
       } else {
         setNotification({ message: result.error, type: "error" });
       }
@@ -147,7 +186,7 @@ const Auth = () => {
       error?.error?.includes("redirect_uri_mismatch")
     ) {
       errorMessage =
-        'Redirect URI mismatch. Please add http://localhost:5173 to BOTH "Authorized JavaScript origins" AND "Authorized redirect URIs" in Google Cloud Console. See FIX_GOOGLE_OAUTH_ERROR.md for details.';
+        'Redirect URI mismatch. Please add http://localhost:5173 to BOTH "Authorized JavaScript origins" AND "Authorized redirect URIs" in Google Cloud Console. See docs/FIX_GOOGLE_OAUTH_ERROR.md for details.';
     } else if (error?.error) {
       errorMessage = `Google login error: ${error.error}`;
     }
@@ -239,17 +278,31 @@ const Auth = () => {
 
           <form onSubmit={handleSubmit} className="auth-form">
             {!isLogin && (
-              <div className="form-group">
-                <label htmlFor="name">Full Name</label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required={!isLogin}
-                  placeholder="Enter your full name"
-                />
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="firstName">First Name</label>
+                  <input
+                    type="text"
+                    id="firstName"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    required
+                    placeholder="Enter your first name"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="secondName">Second Name</label>
+                  <input
+                    type="text"
+                    id="secondName"
+                    name="secondName"
+                    value={formData.secondName}
+                    onChange={handleChange}
+                    required
+                    placeholder="Enter your last name"
+                  />
+                </div>
               </div>
             )}
 
@@ -328,8 +381,9 @@ const Auth = () => {
                 setFormData({
                   email: "",
                   password: "",
-                  name: "",
                   confirmPassword: "",
+                  firstName: "",
+                  secondName: "",
                 });
               }}
             >

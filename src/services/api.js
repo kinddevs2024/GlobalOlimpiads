@@ -57,8 +57,19 @@ export const authAPI = {
   loginWithGoogle: (token) => api.post("/auth/google", { token }),
   getMe: () => api.get("/auth/me"),
   updateProfile: (data) => {
-    // Interceptor will handle FormData Content-Type automatically
-    return api.put("/auth/profile", data);
+    // If data is FormData, interceptor will handle Content-Type automatically
+    // If data is JSON object, send as JSON
+    if (data instanceof FormData) {
+      return api.put("/auth/profile", data);
+    } else {
+      // Ensure we're sending valid JSON
+      const jsonData = JSON.parse(JSON.stringify(data));
+      return api.put("/auth/profile", jsonData, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    }
   },
   uploadLogo: (logoFile) => {
     const formData = new FormData();
@@ -89,6 +100,15 @@ export const olympiadAPI = {
   uploadCameraCapture: (formData) => {
     // formData should include: olympiadId, captureType ('camera' | 'screen'), image (File)
     return api.post("/olympiads/camera-capture", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+  uploadRealTimeCapture: (formData) => {
+    // formData should include: olympiadId, cameraImage, screenImage, timestamp
+    // Sends real-time captures during olympiad (every 1 second)
+    return api.post("/olympiads/real-time-capture", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -188,6 +208,8 @@ export const adminAPI = {
     return api.get(url);
   },
   addQuestion: (data) => api.post("/admin/questions", data),
+  updateQuestion: (questionId, data) => api.put(`/admin/questions/${questionId}`, data),
+  deleteQuestion: (questionId) => api.delete(`/admin/questions/${questionId}`),
 
   // User management
   getUsers: () => api.get("/admin/users"),
@@ -298,6 +320,14 @@ export const schoolTeacherAPI = {
     if (olympiadId) params.append("olympiadId", olympiadId);
     const query = params.toString();
     return api.get(`/school-teacher/captures${query ? `?${query}` : ""}`);
+  },
+};
+
+// Monitoring endpoints
+export const monitoringAPI = {
+  // Get active students for monitoring (filtered by role)
+  getActiveStudents: (olympiadId) => {
+    return api.get(`/monitoring/active-students?olympiadId=${olympiadId}`);
   },
 };
 

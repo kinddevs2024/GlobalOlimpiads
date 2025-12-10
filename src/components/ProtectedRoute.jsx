@@ -25,9 +25,11 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   }
 
   if (requiredRole) {
-    // For ADMIN role, also allow OWNER (owner has admin privileges)
+    // For ADMIN role, also allow OWNER and RESOLTER (owner has admin privileges, resolter can manage questions)
     if (requiredRole === USER_ROLES.ADMIN) {
-      if (user.role !== USER_ROLES.ADMIN && user.role !== USER_ROLES.OWNER) {
+      if (user.role !== USER_ROLES.ADMIN && 
+          user.role !== USER_ROLES.OWNER && 
+          user.role !== USER_ROLES.RESOLTER) {
         return <Navigate to="/dashboard" replace />;
       }
     } else {

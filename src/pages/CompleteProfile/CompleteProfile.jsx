@@ -108,19 +108,37 @@ const CompleteProfile = () => {
       }
 
       // Then update profile with all information
+      // Parse name into firstName and secondName if needed
+      const nameParts = formData.name.trim().split(/\s+/);
+      const firstName = nameParts[0] || "";
+      const secondName = nameParts.slice(1).join(" ") || "";
+
       const updateData = new FormData();
       updateData.append("name", formData.name);
-      updateData.append("firstName", formData.firstName || "");
-      updateData.append("secondName", formData.secondName || "");
-      updateData.append("tel", formData.tel);
-      updateData.append("address", formData.address);
-      updateData.append("dateBorn", formData.dateBorn);
-      updateData.append("gender", formData.gender);
+      updateData.append("firstName", firstName);
+      updateData.append("secondName", secondName);
+      updateData.append("email", user.email || ""); // Include email
+      updateData.append("tel", formData.tel || "");
+      updateData.append("address", formData.address || "");
+
+      // Date of birth - convert to ISO string if present
+      if (formData.dateBorn) {
+        // Ensure date is in correct format
+        const dateValue = formData.dateBorn.includes("T")
+          ? formData.dateBorn
+          : `${formData.dateBorn}T00:00:00`;
+        updateData.append("dateBorn", new Date(dateValue).toISOString());
+      } else {
+        updateData.append("dateBorn", "");
+      }
+
+      // Gender
+      updateData.append("gender", formData.gender || "");
 
       // Only append school fields if user is a student
       if (user.role === USER_ROLES.STUDENT) {
-        updateData.append("schoolName", formData.schoolName);
-        updateData.append("schoolId", formData.schoolId);
+        updateData.append("schoolName", formData.schoolName || "");
+        updateData.append("schoolId", formData.schoolId || "");
       }
 
       // Append logo URL if we have one
@@ -128,11 +146,159 @@ const CompleteProfile = () => {
         updateData.append("userLogo", logoUrl);
       }
 
-      const response = await authAPI.updateProfile(updateData);
-      const updatedUser = response.data.user || response.data;
+      // Debug: Log FormData contents
+      console.log("=== Complete Profile Form Data Being Sent ===");
+      console.log("name:", formData.name);
+      console.log("firstName:", firstName);
+      console.log("secondName:", secondName);
+      console.log("email:", user.email);
+      console.log("tel:", formData.tel);
+      console.log("address:", formData.address);
+      console.log("dateBorn:", formData.dateBorn);
+      console.log("gender:", formData.gender);
+      console.log("schoolName:", formData.schoolName);
+      console.log("schoolId:", formData.schoolId);
+      console.log("logoUrl:", logoUrl);
 
-      // Update user in context
+      // Validate required fields before sending
+      if (!formData.name || !formData.name.trim()) {
+        setNotification({
+          message: "Name is required",
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.tel || !formData.tel.trim()) {
+        setNotification({
+          message: "Phone number is required",
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.address || !formData.address.trim()) {
+        setNotification({
+          message: "Address is required",
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.dateBorn) {
+        setNotification({
+          message: "Date of birth is required",
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.gender) {
+        setNotification({
+          message: "Gender is required",
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (user.role === USER_ROLES.STUDENT) {
+        if (!formData.schoolName || !formData.schoolName.trim()) {
+          setNotification({
+            message: "School name is required",
+            type: "error",
+          });
+          setLoading(false);
+          return;
+        }
+        if (!formData.schoolId || !formData.schoolId.trim()) {
+          setNotification({
+            message: "School ID is required",
+            type: "error",
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      // If no new logo is being uploaded, try sending as JSON instead
+      // This might work better if backend has issues parsing FormData
+      let response;
+      if (!formData.userLogo) {
+        // No file upload, send as JSON
+        const jsonData = {
+          name: formData.name.trim(),
+          email: user.email || "",
+          firstName: firstName,
+          secondName: secondName,
+          tel: formData.tel.trim(),
+          address: formData.address.trim(),
+          gender: formData.gender,
+          dateBorn: formData.dateBorn
+            ? new Date(formData.dateBorn + "T00:00:00").toISOString()
+            : null,
+        };
+
+        if (user.role === USER_ROLES.STUDENT) {
+          jsonData.schoolName = formData.schoolName.trim();
+          jsonData.schoolId = formData.schoolId.trim();
+        }
+
+        if (logoUrl) {
+          jsonData.userLogo = logoUrl;
+        }
+
+        console.log("Sending as JSON (no file upload):", jsonData);
+        response = await authAPI.updateProfile(jsonData);
+      } else {
+        // Has file upload, use FormData
+        console.log("Calling updateProfile API with FormData...");
+        response = await authAPI.updateProfile(updateData);
+      }
+
+      console.log("Profile update response:", response);
+      console.log("Response status:", response?.status);
+      console.log("Response data:", response?.data);
+
+      // Handle different response formats
+      let updatedUser = null;
+      if (response?.data) {
+        if (response.data.user) {
+          updatedUser = response.data.user;
+        } else if (response.data._id) {
+          // Response is the user object directly
+          updatedUser = response.data;
+        } else if (typeof response.data === 'object') {
+          updatedUser = response.data;
+        }
+      }
+
+      if (!updatedUser) {
+        throw new Error("Invalid response format from server");
+      }
+
+      console.log("Updated user object:", updatedUser);
+
+      // Update user in context (this also saves to localStorage)
       setUser(updatedUser);
+
+      // Refresh user data from server to ensure we have the latest complete data
+      try {
+        const meResponse = await authAPI.getMe();
+        const freshUser = meResponse.data;
+        console.log("Fresh user data from server:", freshUser);
+        // Update with fresh data (this saves to localStorage)
+        if (freshUser) {
+          setUser(freshUser);
+        }
+      } catch (meError) {
+        console.warn("Failed to refresh user data, using response data:", meError);
+        // Even if refresh fails, we still have the updated user from the response
+      }
 
       setNotification({
         message: "Profile completed successfully!",
@@ -144,12 +310,38 @@ const CompleteProfile = () => {
       }, 1500);
     } catch (error) {
       console.error("Profile completion error:", error);
-      console.error("Error response:", error.response?.data);
-      const errorMessage =
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        error.message ||
-        "Failed to complete profile. Please check all required fields.";
+      console.error("Error response:", error.response);
+      console.error("Error response data:", error.response?.data);
+      console.error("Error message:", error.message);
+      
+      let errorMessage = "Failed to complete profile. Please check all required fields.";
+      
+      if (error.response?.data) {
+        // Try to extract error message from response
+        if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        } else if (error.response.data.errors) {
+          // Handle validation errors
+          const errors = error.response.data.errors;
+          if (Array.isArray(errors)) {
+            errorMessage = errors.map(e => e.message || e).join(', ');
+          } else if (typeof errors === 'object') {
+            errorMessage = Object.values(errors).flat().join(', ');
+          }
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      // Check for network errors
+      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+        errorMessage = "Network error. Please check your connection and try again.";
+      }
+
       setNotification({
         message: errorMessage,
         type: "error",

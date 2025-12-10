@@ -6,10 +6,11 @@ import { USER_ROLES } from "../../utils/constants";
 import "./Profile.css";
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  if (!user) {
+  // Wait for auth to finish loading before showing profile
+  if (authLoading || !user) {
     return (
       <div className="profile-page">
         <div className="container">

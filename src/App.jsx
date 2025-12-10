@@ -24,6 +24,7 @@ import ProfileEdit from "./pages/ProfileEdit";
 import CompleteProfile from "./pages/CompleteProfile";
 import ResolterPanel from "./pages/ResolterPanel";
 import SchoolTeacherPanel from "./pages/SchoolTeacherPanel";
+import RealTimeMonitoring from "./pages/RealTimeMonitoring/RealTimeMonitoring";
 import { USER_ROLES, GOOGLE_CLIENT_ID } from "./utils/constants";
 import "./styles/globals.css";
 import "./styles/animations.css";
@@ -133,6 +134,24 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requiredRole={USER_ROLES.SCHOOL_TEACHER}>
             <SchoolTeacherPanel />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/monitoring"
+        element={
+          <ProtectedRoute>
+            <RealTimeMonitoring />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/monitoring/:olympiadId"
+        element={
+          <ProtectedRoute>
+            <RealTimeMonitoring />
           </ProtectedRoute>
         }
       />

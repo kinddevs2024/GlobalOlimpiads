@@ -33,12 +33,16 @@ const Results = () => {
     percentage: "",
   });
 
-  // Check if user is admin, owner, resolter, or school teacher (used throughout component)
+  // Check if user is admin, owner, resolter, school teacher, or school admin (used throughout component)
   const isAdminOrOwner =
     user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.OWNER;
   const isResolter = user?.role === USER_ROLES.RESOLTER;
   const isSchoolTeacher = user?.role === USER_ROLES.SCHOOL_TEACHER;
-  const canViewAllResults = isAdminOrOwner || isResolter || isSchoolTeacher;
+  const isSchoolAdmin = user?.role === USER_ROLES.SCHOOL_ADMIN;
+  const isStudent = user?.role === USER_ROLES.STUDENT;
+  // Users with school-scoped access: resolter, school-teacher, school-admin (NOT students)
+  const hasSchoolScopedAccess = isResolter || isSchoolTeacher || isSchoolAdmin;
+  const canViewAllResults = isAdminOrOwner || isResolter || isSchoolTeacher || isSchoolAdmin;
 
   useEffect(() => {
     if (!user) return; // Wait for user to be loaded
@@ -64,10 +68,10 @@ const Results = () => {
       let data;
 
       if (canViewAllResults) {
-        // For admins/owners/resolters/school teachers: fetch all results for this olympiad
+        // For admins/owners/resolters/school teachers/school admins: fetch all results for this olympiad
         let submissionsResponse;
-        if (isResolter) {
-          // Use resolter API endpoint
+        if (isResolter || (isSchoolAdmin && hasSchoolScopedAccess)) {
+          // Use resolter API endpoint (school-scoped for resolters and school-admins)
           submissionsResponse = await resolterAPI.getResults(id);
         } else if (isSchoolTeacher) {
           // Use school teacher API endpoint (filtered by school)
@@ -262,10 +266,10 @@ const Results = () => {
       let submissions = [];
 
       if (canViewAllResults) {
-        // For admins/owners/resolters/school teachers: get all submissions from all olympiads
+        // For admins/owners/resolters/school teachers/school admins: get all submissions from all olympiads
         let response;
-        if (isResolter) {
-          // Use resolter API endpoint
+        if (isResolter || (isSchoolAdmin && hasSchoolScopedAccess)) {
+          // Use resolter API endpoint (school-scoped for resolters and school-admins)
           response = await resolterAPI.getAllResults();
         } else if (isSchoolTeacher) {
           // Use school teacher API endpoint (filtered by school)
@@ -406,13 +410,36 @@ const Results = () => {
         }
       }
 
-      // Filter by visibility: students can see results that are:
-      // 1. Their own results (always visible to them)
-      // 2. Results with status 'checked' AND visible === true (anyone can see)
-      // 3. Results with visible === true (if not checked, only visible to admins/resolters)
+      // Filter by visibility and school-scoped access
+      // Resolters, school-admins, and school-teachers can see school-scoped results
+      // Students can only see their own results (NOT school-scoped)
       let visibleResults = resultsWithOlympiad;
-      if (!canViewAllResults) {
+      if (!canViewAllResults || (hasSchoolScopedAccess && !isAdminOrOwner)) {
+        // For school-scoped users, filter by school
+        const userSchoolId = user?.schoolId || user?.school?.schoolId;
+        const userSchoolName = user?.schoolName || user?.school?.schoolName;
+        
         visibleResults = resultsWithOlympiad.filter((result) => {
+          // Check if result is from same school
+          const resultSchoolId = result.user?.schoolId || result.schoolId;
+          const resultSchoolName = result.user?.schoolName || result.schoolName;
+          const isSameSchool = userSchoolId && resultSchoolId && 
+                              (userSchoolId === resultSchoolId || 
+                               userSchoolName === resultSchoolName);
+          
+          // For students: ONLY own results (no school-scoped access)
+          if (isStudent) {
+            const isOwnResult =
+              result.userId === user?._id || result.user?._id === user?._id;
+            return isOwnResult;
+          }
+          
+          // For resolters, school-admins, school-teachers: same school results
+          if (hasSchoolScopedAccess) {
+            return isSameSchool;
+          }
+          
+          // Fallback for other users
           const isOwnResult =
             result.userId === user?._id || result.user?._id === user?._id;
           const isCheckedAndVisible =
@@ -456,7 +483,7 @@ const Results = () => {
           <div className="no-results card">
             <h2>Error</h2>
             <p>{error}</p>
-            <Link to="/dashboard" className="button-primary">
+            <Link to="/dashboard" className="button-secondary no-hover">
               Go to Dashboard
             </Link>
           </div>
@@ -472,11 +499,17 @@ const Results = () => {
         <div className="container">
           <div className="results-header">
             <h1 className="results-title text-glow">
-              {canViewAllResults ? "All Results" : "All Your Results"}
+              {canViewAllResults 
+                ? (hasSchoolScopedAccess && !isAdminOrOwner 
+                    ? "School Results" 
+                    : "All Results")
+                : "All Your Results"}
             </h1>
             <p className="results-subtitle">
               {canViewAllResults
-                ? "View all olympiad results from all users"
+                ? (hasSchoolScopedAccess && !isAdminOrOwner
+                    ? "View all olympiad results from your school"
+                    : "View all olympiad results from all users")
                 : "View all your olympiad results"}
             </p>
           </div>
@@ -489,7 +522,7 @@ const Results = () => {
                   ? "No olympiad results found yet."
                   : "You haven't completed any olympiads yet."}
               </p>
-              <Link to="/dashboard" className="button-primary">
+              <Link to="/dashboard" className="button-secondary no-hover">
                 Go to Dashboard
               </Link>
             </div>
@@ -579,7 +612,7 @@ const Results = () => {
           <div className="no-results card">
             <h2>No Results Found</h2>
             <p>You haven't completed this olympiad yet.</p>
-            <Link to="/dashboard" className="button-primary">
+            <Link to="/dashboard" className="button-secondary no-hover">
               Go to Dashboard
             </Link>
           </div>
@@ -596,7 +629,7 @@ const Results = () => {
           <div className="no-results card">
             <h2>No Results Found</h2>
             <p>No one has completed this olympiad yet.</p>
-            <Link to="/dashboard" className="button-primary">
+            <Link to="/dashboard" className="button-secondary no-hover">
               Go to Dashboard
             </Link>
           </div>
@@ -689,7 +722,11 @@ const Results = () => {
       <div className="container">
         <div className="results-header">
           <h1 className="results-title text-glow">
-            {canViewAllResults ? "All Results" : "Your Results"}
+            {canViewAllResults 
+              ? (hasSchoolScopedAccess && !isAdminOrOwner 
+                  ? "School Results" 
+                  : "All Results")
+              : "Your Results"}
           </h1>
           {olympiadTitle && (
             <h2 className="results-subtitle">{olympiadTitle}</h2>

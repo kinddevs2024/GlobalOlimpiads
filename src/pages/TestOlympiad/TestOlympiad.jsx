@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { olympiadAPI } from '../../services/api';
 import { useSocket } from '../../context/SocketContext';
@@ -15,6 +15,7 @@ const TestOlympiad = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { on } = useSocket();
+  const proctoringMonitorRef = useRef(null);
   
   const [olympiad, setOlympiad] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -25,6 +26,7 @@ const TestOlympiad = () => {
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [isUploadingVideos, setIsUploadingVideos] = useState(false);
 
   useEffect(() => {
     fetchOlympiad();
@@ -149,15 +151,33 @@ const TestOlympiad = () => {
   const handleSubmit = async () => {
     if (window.confirm('Are you sure you want to submit? You cannot change answers after submission.')) {
       try {
+        // Stop recording and upload videos before submitting
+        setIsUploadingVideos(true);
+        setNotification({ message: 'Stopping recording and uploading videos...', type: 'info' });
+        
+        if (proctoringMonitorRef.current && proctoringMonitorRef.current.stopRecording) {
+          try {
+            await proctoringMonitorRef.current.stopRecording();
+            console.log('Recording stopped and videos uploaded');
+          } catch (videoError) {
+            console.error('Error stopping recording/uploading videos:', videoError);
+            // Continue with submission even if video upload fails
+          }
+        }
+
+        // Submit answers
         await olympiadAPI.submit(id, { answers });
         setSubmitted(true);
         // Clear saved answers after successful submission
         localStorage.removeItem(`olympiad_${id}_answers`);
-        setNotification({ message: 'Answers submitted successfully!', type: 'success' });
+        setNotification({ message: 'Answers submitted successfully! Videos uploaded.', type: 'success' });
+        setIsUploadingVideos(false);
+        
         setTimeout(() => {
           navigate(`/olympiad/${id}/results`);
         }, 2000);
       } catch (error) {
+        setIsUploadingVideos(false);
         setNotification({ 
           message: error.response?.data?.message || 'Submission failed', 
           type: 'error' 
@@ -215,6 +235,7 @@ const TestOlympiad = () => {
   return (
     <div className="test-olympiad-page">
       <ProctoringMonitor 
+        ref={proctoringMonitorRef}
         olympiadId={id} 
         userId={user?._id}
         olympiadTitle={olympiad?.title}

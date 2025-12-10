@@ -11,6 +11,7 @@ const ProfileEdit = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     firstName: "",
@@ -26,8 +27,42 @@ const ProfileEdit = () => {
     userLogo: null,
   });
 
+  const STORAGE_KEY = "profileEdit_draft";
+
+  // Load draft from localStorage on mount
   useEffect(() => {
-    if (user) {
+    try {
+      const savedDraft = localStorage.getItem(STORAGE_KEY);
+      if (savedDraft) {
+        const draftData = JSON.parse(savedDraft);
+        // Check if draft is recent (within 7 days)
+        const draftAge = Date.now() - (draftData.timestamp || 0);
+        const sevenDays = 7 * 24 * 60 * 60 * 1000;
+        
+        if (draftAge < sevenDays) {
+          // Restore draft data (excluding userLogo which can't be stored)
+          setFormData(prev => ({
+            ...prev,
+            ...draftData.data,
+            userLogo: null, // File objects can't be stored in localStorage
+          }));
+          setNotification({
+            message: "Your previous draft has been restored. You can continue editing.",
+            type: "info",
+          });
+        } else {
+          // Draft is too old, remove it
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading draft from localStorage:", error);
+    }
+  }, []);
+
+  // Initialize form data from user
+  useEffect(() => {
+    if (user && !isInitialized) {
       // Format date for date input (YYYY-MM-DD)
       const formatDateForInput = (dateString) => {
         if (!dateString) return "";
@@ -50,22 +85,74 @@ const ProfileEdit = () => {
         secondName = nameParts.slice(1).join(" ") || "";
       }
 
-      setFormData({
-        name: name,
-        firstName: firstName,
-        secondName: secondName,
-        email: user.email || "",
-        gmail: user.gmail || "",
-        tel: user.tel || "",
-        address: user.address || "",
-        schoolName: user.schoolName || "",
-        schoolId: user.schoolId || "",
-        dateBorn: formatDateForInput(user.dateBorn),
-        gender: user.gender || "",
-        userLogo: null,
-      });
+      // Only set if we don't have draft data
+      const savedDraft = localStorage.getItem(STORAGE_KEY);
+      if (!savedDraft) {
+        setFormData({
+          name: name,
+          firstName: firstName,
+          secondName: secondName,
+          email: user.email || "",
+          gmail: user.gmail || "",
+          tel: user.tel || "",
+          address: user.address || "",
+          schoolName: user.schoolName || "",
+          schoolId: user.schoolId || "",
+          dateBorn: formatDateForInput(user.dateBorn),
+          gender: user.gender || "",
+          userLogo: null,
+        });
+      }
+      setIsInitialized(true);
     }
-  }, [user]);
+  }, [user, isInitialized]);
+
+  // Save form data to localStorage whenever it changes (debounced)
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const saveTimeout = setTimeout(() => {
+      try {
+        // Save form data to localStorage (excluding File objects)
+        const dataToSave = {
+          ...formData,
+          userLogo: null, // Can't store File objects
+        };
+        
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            data: dataToSave,
+            timestamp: Date.now(),
+          })
+        );
+      } catch (error) {
+        console.error("Error saving draft to localStorage:", error);
+      }
+    }, 500); // Debounce: save 500ms after last change
+
+    return () => clearTimeout(saveTimeout);
+  }, [formData, isInitialized]);
+
+  // Warn user before leaving page with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      // Check if there are unsaved changes
+      const hasDraft = localStorage.getItem(STORAGE_KEY);
+      if (hasDraft && !loading) {
+        // Modern browsers ignore custom messages, but we can still trigger the warning
+        e.preventDefault();
+        e.returnValue = ""; // Chrome requires returnValue to be set
+        return ""; // For older browsers
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [loading]);
 
   const handleChange = (e) => {
     if (e.target.type === "file") {
@@ -242,6 +329,9 @@ const ProfileEdit = () => {
       // Update user in context
       setUser(updatedUser);
 
+      // Clear draft from localStorage on successful save
+      localStorage.removeItem(STORAGE_KEY);
+
       setNotification({
         message: "Profile updated successfully!",
         type: "success",
@@ -286,7 +376,19 @@ const ProfileEdit = () => {
           <h1 className="profile-edit-title text-glow">Edit Profile</h1>
           <button
             className="button-secondary"
-            onClick={() => navigate("/profile")}
+            onClick={() => {
+              // Ask user if they want to keep draft or discard
+              const hasDraft = localStorage.getItem(STORAGE_KEY);
+              if (hasDraft) {
+                const keepDraft = window.confirm(
+                  "Your changes have been saved as a draft. Do you want to keep the draft for later? (Click OK to keep, Cancel to discard)"
+                );
+                if (!keepDraft) {
+                  localStorage.removeItem(STORAGE_KEY);
+                }
+              }
+              navigate("/profile");
+            }}
           >
             Cancel
           </button>
@@ -478,7 +580,19 @@ const ProfileEdit = () => {
             <button
               type="button"
               className="button-secondary"
-              onClick={() => navigate("/profile")}
+              onClick={() => {
+                // Ask user if they want to keep draft or discard
+                const hasDraft = localStorage.getItem(STORAGE_KEY);
+                if (hasDraft) {
+                  const keepDraft = window.confirm(
+                    "Your changes have been saved as a draft. Do you want to keep the draft for later? (Click OK to keep, Cancel to discard)"
+                  );
+                  if (!keepDraft) {
+                    localStorage.removeItem(STORAGE_KEY);
+                  }
+                }
+                navigate("/profile");
+              }}
             >
               Cancel
             </button>

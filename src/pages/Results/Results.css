@@ -101,6 +101,20 @@
   margin-bottom: 24px;
 }
 
+/* Remove hover animations from Go to Dashboard button */
+.no-results .button-secondary.no-hover,
+.no-results .no-hover {
+  transition: none;
+}
+
+.no-results .button-secondary.no-hover:hover,
+.no-results .no-hover:hover {
+  border-color: var(--border);
+  box-shadow: none;
+  transform: none;
+  color: var(--text-primary);
+}
+
 .results-actions {
   display: flex;
   justify-content: center;

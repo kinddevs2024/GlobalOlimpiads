@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { adminAPI, olympiadAPI } from "../../services/api";
 import NotificationToast from "../../components/NotificationToast";
 import { formatDate } from "../../utils/helpers";
+import { useAuth } from "../../context/AuthContext";
+import { USER_ROLES } from "../../utils/constants";
 import "./AdminPanel.css";
 
 // Question Form Component for Step 3
@@ -12,6 +14,7 @@ const QuestionFormStep = ({
   onAddQuestion,
   onFinish,
   onBack,
+  onValidationError,
 }) => {
   const [questionForm, setQuestionForm] = useState({
     question: "",
@@ -20,50 +23,80 @@ const QuestionFormStep = ({
     correctAnswer: "",
     points: 10,
   });
+  const [isAdding, setIsAdding] = useState(false);
 
-  const handleAddQuestion = (e) => {
+  const handleAddQuestion = async (e) => {
     e.preventDefault();
+    setIsAdding(true);
 
-    if (olympiadType === "test") {
-      // Validate multiple choice question
-      if (!questionForm.question || !questionForm.correctAnswer) {
-        return;
-      }
-      const validOptions = questionForm.options.filter(
-        (opt) => opt.trim() !== ""
-      );
-      if (validOptions.length < 2) {
-        return;
+    try {
+      if (olympiadType === "test") {
+        // Validate multiple choice question
+        if (!questionForm.question || !questionForm.question.trim()) {
+          if (onValidationError) {
+            onValidationError("Please enter a question");
+          }
+          setIsAdding(false);
+          return;
+        }
+        
+        const validOptions = questionForm.options.filter(
+          (opt) => opt.trim() !== ""
+        );
+        if (validOptions.length < 2) {
+          if (onValidationError) {
+            onValidationError("Please provide at least 2 options");
+          }
+          setIsAdding(false);
+          return;
+        }
+        
+        if (!questionForm.correctAnswer || !questionForm.correctAnswer.trim()) {
+          if (onValidationError) {
+            onValidationError("Please select a correct answer");
+          }
+          setIsAdding(false);
+          return;
+        }
+
+        await onAddQuestion({
+          question: questionForm.question,
+          type: "multiple-choice",
+          options: validOptions,
+          correctAnswer: questionForm.correctAnswer,
+          points: questionForm.points,
+        });
+      } else {
+        // Essay question
+        if (!questionForm.question || !questionForm.question.trim()) {
+          if (onValidationError) {
+            onValidationError("Please enter a question");
+          }
+          setIsAdding(false);
+          return;
+        }
+
+        await onAddQuestion({
+          question: questionForm.question,
+          type: "essay",
+          points: questionForm.points,
+        });
       }
 
-      onAddQuestion({
-        question: questionForm.question,
-        type: "multiple-choice",
-        options: validOptions,
-        correctAnswer: questionForm.correctAnswer,
-        points: questionForm.points,
+      // Reset form only after successful save
+      setQuestionForm({
+        question: "",
+        type: olympiadType === "test" ? "multiple-choice" : "essay",
+        options: ["", "", "", ""],
+        correctAnswer: "",
+        points: 10,
       });
-    } else {
-      // Essay question
-      if (!questionForm.question) {
-        return;
-      }
-
-      onAddQuestion({
-        question: questionForm.question,
-        type: "essay",
-        points: questionForm.points,
-      });
+    } catch (error) {
+      // Error handling is done in parent component
+      console.error("Error adding question:", error);
+    } finally {
+      setIsAdding(false);
     }
-
-    // Reset form
-    setQuestionForm({
-      question: "",
-      type: olympiadType === "test" ? "multiple-choice" : "essay",
-      options: ["", "", "", ""],
-      correctAnswer: "",
-      points: 10,
-    });
   };
 
   const handleOptionChange = (index, value) => {
@@ -180,13 +213,13 @@ const QuestionFormStep = ({
         </div>
 
         <div className="form-actions">
-          <button type="button" className="button-secondary" onClick={onBack}>
+          <button type="button" className="button-secondary" onClick={onBack} disabled={isAdding}>
             Back
           </button>
-          <button type="submit" className="button-primary">
-            Add Question
+          <button type="submit" className="button-primary" disabled={isAdding}>
+            {isAdding ? "Adding..." : "Add Question"}
           </button>
-          <button type="button" className="button-success" onClick={onFinish}>
+          <button type="button" className="button-success" onClick={onFinish} disabled={isAdding}>
             Finish
           </button>
         </div>
@@ -196,6 +229,10 @@ const QuestionFormStep = ({
 };
 
 const AdminPanel = () => {
+  const { user } = useAuth();
+  const isResolter = user?.role === USER_ROLES.RESOLTER;
+  const canManageOlympiads = !isResolter; // Resolters can only manage questions, not olympiads
+  
   const [olympiads, setOlympiads] = useState([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedOlympiad, setSelectedOlympiad] = useState(null);
@@ -230,9 +267,15 @@ const AdminPanel = () => {
 
   const fetchOlympiads = async () => {
     try {
-      // Use admin endpoint to get all olympiads (including drafts)
-      const response = await adminAPI.getAllOlympiads();
-      setOlympiads(response.data);
+      if (isResolter) {
+        // Resolters only see published olympiads (for question management)
+        const response = await olympiadAPI.getAll();
+        setOlympiads(response.data || []);
+      } else {
+        // Use admin endpoint to get all olympiads (including drafts)
+        const response = await adminAPI.getAllOlympiads();
+        setOlympiads(response.data);
+      }
     } catch (error) {
       setNotification({ message: "Failed to load olympiads", type: "error" });
     } finally {
@@ -377,7 +420,7 @@ const AdminPanel = () => {
           message: "Please create the olympiad first before adding questions",
           type: "error",
         });
-        return;
+        throw new Error("Olympiad not created");
       }
 
       const questionPayload = {
@@ -387,21 +430,45 @@ const AdminPanel = () => {
       };
 
       const response = await adminAPI.addQuestion(questionPayload);
-      setQuestions([...questions, response.data]);
+      const newQuestion = response.data || response.data?.question || questionPayload;
+      setQuestions([...questions, newQuestion]);
       setNotification({
         message: "Question added successfully!",
         type: "success",
       });
     } catch (error) {
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          error.message || 
+                          "Failed to add question";
       setNotification({
-        message: error.response?.data?.message || "Failed to add question",
+        message: errorMessage,
         type: "error",
       });
+      throw error; // Re-throw so QuestionFormStep can handle it
     }
   };
 
+  // Handle validation errors from QuestionFormStep
+  const handleValidationError = (message) => {
+    setNotification({
+      message: message,
+      type: "error",
+    });
+  };
+
   // Finish and close
-  const handleFinish = () => {
+  const handleFinish = async () => {
+    // Check if there are any questions
+    if (questions.length === 0) {
+      const confirmFinish = window.confirm(
+        "You haven't added any questions yet. Are you sure you want to finish? You can add questions later by editing the olympiad."
+      );
+      if (!confirmFinish) {
+        return;
+      }
+    }
+
     setShowCreateForm(false);
     setCurrentStep(1);
     setCreatedOlympiadId(null);
@@ -417,9 +484,11 @@ const AdminPanel = () => {
       status: "draft",
       olympiadLogo: null,
     });
-    fetchOlympiads();
+    await fetchOlympiads();
     setNotification({
-      message: "Olympiad created successfully with questions!",
+      message: questions.length > 0 
+        ? `Olympiad created successfully with ${questions.length} question(s)!`
+        : "Olympiad created successfully! You can add questions later by editing it.",
       type: "success",
     });
   };
@@ -658,28 +727,34 @@ const AdminPanel = () => {
     <div className="admin-panel-page">
       <div className="container">
         <div className="admin-header">
-          <h1 className="admin-title text-glow">Admin Panel</h1>
+          <h1 className="admin-title text-glow">
+            {isResolter ? "Question Manager" : "Admin Panel"}
+          </h1>
           <div className="admin-header-actions">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="status-filter"
-            >
-              <option value="all">All Status</option>
-              <option value="published">Published</option>
-              <option value="unpublished">Unpublished</option>
-              <option value="draft">Draft</option>
-            </select>
-            <button
-              className="button-primary header-create-button"
-              onClick={() => setShowCreateForm(!showCreateForm)}
-            >
-              {showCreateForm ? "Cancel" : "+ Create Olympiad"}
-            </button>
+            {canManageOlympiads && (
+              <>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="status-filter"
+                >
+                  <option value="all">All Status</option>
+                  <option value="published">Published</option>
+                  <option value="unpublished">Unpublished</option>
+                  <option value="draft">Draft</option>
+                </select>
+                <button
+                  className="button-primary header-create-button"
+                  onClick={() => setShowCreateForm(!showCreateForm)}
+                >
+                  {showCreateForm ? "Cancel" : "+ Create Olympiad"}
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {showCreateForm && (
+        {showCreateForm && canManageOlympiads && (
           <div className="create-form card">
             {/* Step Indicator */}
             <div className="step-indicator">
@@ -1051,13 +1126,14 @@ const AdminPanel = () => {
                 onAddQuestion={handleAddQuestion}
                 onFinish={handleFinish}
                 onBack={() => setCurrentStep(2)}
+                onValidationError={handleValidationError}
               />
             )}
           </div>
         )}
 
         <div className="admin-olympiads">
-          {getFilteredOlympiads().map((olympiad) => {
+          {(canManageOlympiads ? getFilteredOlympiads() : olympiads).map((olympiad) => {
             // Get logo URL - handle both relative and absolute URLs
             // Check multiple possible field names for logo
             const logoField =
@@ -1139,34 +1215,38 @@ const AdminPanel = () => {
                   </div>
                 </div>
                 <div className="olympiad-actions">
-                  <button
-                    className="button-secondary"
-                    onClick={() => handleToggleStatus(olympiad)}
-                    title={
-                      olympiad.status === "published"
-                        ? "Make Unvisible"
-                        : "Make Visible"
-                    }
-                  >
-                    {olympiad.status === "published" ? "🔒 Hide" : "👁️ Show"}
-                  </button>
-                  <button
-                    className="button-secondary"
-                    onClick={() => handleEdit(olympiad)}
-                  >
-                    Edit
-                  </button>
+                  {canManageOlympiads && (
+                    <>
+                      <button
+                        className="button-secondary"
+                        onClick={() => handleToggleStatus(olympiad)}
+                        title={
+                          olympiad.status === "published"
+                            ? "Make Unvisible"
+                            : "Make Visible"
+                        }
+                      >
+                        {olympiad.status === "published" ? "🔒 Hide" : "👁️ Show"}
+                      </button>
+                      <button
+                        className="button-secondary"
+                        onClick={() => handleEdit(olympiad)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="button-danger"
+                        onClick={() => handleDelete(olympiad._id)}
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
                   <button
                     className="button-secondary"
                     onClick={() => handleManageQuestions(olympiad)}
                   >
                     Questions
-                  </button>
-                  <button
-                    className="button-danger"
-                    onClick={() => handleDelete(olympiad._id)}
-                  >
-                    Delete
                   </button>
                 </div>
               </div>
@@ -1203,6 +1283,7 @@ const QuestionManager = ({ olympiad, onClose }) => {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState(null);
   const [notification, setNotification] = useState(null);
   const [questionForm, setQuestionForm] = useState({
     question: "",
@@ -1304,6 +1385,124 @@ const QuestionManager = ({ olympiad, onClose }) => {
     setQuestionForm({ ...questionForm, options: newOptions });
   };
 
+  // Handle edit question
+  const handleEditQuestion = (question) => {
+    setEditingQuestion(question._id);
+    setShowAddForm(false);
+    
+    // Populate form with question data
+    setQuestionForm({
+      question: question.question || "",
+      type: question.type || (olympiad.type === "test" ? "multiple-choice" : "essay"),
+      options: question.options && question.options.length > 0 
+        ? [...question.options, "", "", ""].slice(0, 4) // Ensure 4 options
+        : ["", "", "", ""],
+      correctAnswer: question.correctAnswer || "",
+      points: question.points || 10,
+    });
+  };
+
+  // Handle update question
+  const handleUpdateQuestion = async (e) => {
+    e.preventDefault();
+
+    try {
+      if (olympiad.type === "test") {
+        if (!questionForm.question || !questionForm.correctAnswer) {
+          setNotification({
+            message: "Please fill all required fields",
+            type: "error",
+          });
+          return;
+        }
+        const validOptions = questionForm.options.filter(
+          (opt) => opt.trim() !== ""
+        );
+        if (validOptions.length < 2) {
+          setNotification({
+            message: "Please provide at least 2 options",
+            type: "error",
+          });
+          return;
+        }
+
+        await adminAPI.updateQuestion(editingQuestion, {
+          question: questionForm.question,
+          type: "multiple-choice",
+          options: validOptions,
+          correctAnswer: questionForm.correctAnswer,
+          points: questionForm.points,
+        });
+      } else {
+        if (!questionForm.question) {
+          setNotification({
+            message: "Please enter a question",
+            type: "error",
+          });
+          return;
+        }
+
+        await adminAPI.updateQuestion(editingQuestion, {
+          question: questionForm.question,
+          type: "essay",
+          points: questionForm.points,
+        });
+      }
+
+      setNotification({
+        message: "Question updated successfully",
+        type: "success",
+      });
+      setQuestionForm({
+        question: "",
+        type: olympiad.type === "test" ? "multiple-choice" : "essay",
+        options: ["", "", "", ""],
+        correctAnswer: "",
+        points: 10,
+      });
+      setEditingQuestion(null);
+      fetchQuestions();
+    } catch (error) {
+      setNotification({
+        message: error.response?.data?.message || "Failed to update question",
+        type: "error",
+      });
+    }
+  };
+
+  // Handle delete question
+  const handleDeleteQuestion = async (questionId) => {
+    if (!window.confirm("Are you sure you want to delete this question?")) {
+      return;
+    }
+
+    try {
+      await adminAPI.deleteQuestion(questionId);
+      setNotification({
+        message: "Question deleted successfully",
+        type: "success",
+      });
+      fetchQuestions();
+    } catch (error) {
+      setNotification({
+        message: error.response?.data?.message || "Failed to delete question",
+        type: "error",
+      });
+    }
+  };
+
+  // Cancel edit
+  const handleCancelEdit = () => {
+    setEditingQuestion(null);
+    setQuestionForm({
+      question: "",
+      type: olympiad.type === "test" ? "multiple-choice" : "essay",
+      options: ["", "", "", ""],
+      correctAnswer: "",
+      points: 10,
+    });
+  };
+
   if (loading) {
     return (
       <div className="modal-overlay" onClick={onClose}>
@@ -1332,14 +1531,25 @@ const QuestionManager = ({ olympiad, onClose }) => {
             <h3>Questions ({questions.length})</h3>
             <button
               className="button-primary"
-              onClick={() => setShowAddForm(!showAddForm)}
+              onClick={() => {
+                if (editingQuestion) {
+                  handleCancelEdit();
+                }
+                setShowAddForm(!showAddForm);
+              }}
             >
               {showAddForm ? "Cancel" : "+ Add Question"}
             </button>
           </div>
 
-          {showAddForm && (
-            <form onSubmit={handleAddQuestion} className="question-form card">
+          {(showAddForm || editingQuestion) && (
+            <form 
+              onSubmit={editingQuestion ? handleUpdateQuestion : handleAddQuestion} 
+              className="question-form card"
+            >
+              <h3 className="form-title">
+                {editingQuestion ? "Edit Question" : "Add New Question"}
+              </h3>
               <div className="form-group">
                 <label>Question</label>
                 <textarea
@@ -1412,9 +1622,35 @@ const QuestionManager = ({ olympiad, onClose }) => {
                 </div>
               </div>
 
-              <button type="submit" className="button-primary">
-                Add Question
-              </button>
+              <div className="form-actions">
+                {editingQuestion ? (
+                  <>
+                    <button 
+                      type="button" 
+                      className="button-secondary" 
+                      onClick={handleCancelEdit}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="button-primary">
+                      Update Question
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button 
+                      type="button" 
+                      className="button-secondary" 
+                      onClick={() => setShowAddForm(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="button-primary">
+                      Add Question
+                    </button>
+                  </>
+                )}
+              </div>
             </form>
           )}
 
@@ -1427,8 +1663,26 @@ const QuestionManager = ({ olympiad, onClose }) => {
               questions.map((q, index) => (
                 <div key={q._id || index} className="question-item card">
                   <div className="question-header">
-                    <span className="question-number">Q{index + 1}</span>
-                    <span className="question-points">{q.points} pts</span>
+                    <div className="question-header-left">
+                      <span className="question-number">Q{index + 1}</span>
+                      <span className="question-points">{q.points} pts</span>
+                    </div>
+                    <div className="question-actions">
+                      <button
+                        className="button-icon"
+                        onClick={() => handleEditQuestion(q)}
+                        title="Edit question"
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        className="button-icon button-danger"
+                        onClick={() => handleDeleteQuestion(q._id)}
+                        title="Delete question"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
                   </div>
                   <p className="question-text">{q.question}</p>
                   {q.type === "multiple-choice" && q.options && (

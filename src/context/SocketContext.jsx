@@ -6,8 +6,15 @@ const SocketContext = createContext(null);
 
 export const useSocket = () => {
   const context = useContext(SocketContext);
+  // Return a default context if not available instead of throwing
   if (!context) {
-    throw new Error('useSocket must be used within SocketProvider');
+    return {
+      socket: null,
+      connected: false,
+      emit: () => {},
+      on: () => {},
+      off: () => {},
+    };
   }
   return context;
 };

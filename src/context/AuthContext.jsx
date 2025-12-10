@@ -23,14 +23,27 @@ export const AuthProvider = ({ children }) => {
       const savedUser = getUser();
       
       if (token && savedUser) {
+        // Optimistically set authenticated state
+        setUserState(savedUser);
+        setIsAuthenticated(true);
+        
+        // Then validate token in the background
         try {
           const response = await authAPI.getMe();
+          // Update with fresh user data from server
           setUserState(response.data);
           setUser(response.data);
-          setIsAuthenticated(true);
         } catch (error) {
-          removeToken();
-          removeUser();
+          // Only remove token on 401 (unauthorized), not on network errors
+          // Network errors shouldn't invalidate a valid token
+          if (error.response?.status === 401) {
+            removeToken();
+            removeUser();
+            setUserState(null);
+            setIsAuthenticated(false);
+          }
+          // For other errors (network, etc.), keep the user logged in
+          // The token might still be valid, just couldn't verify right now
         }
       }
       setLoading(false);
@@ -48,6 +61,16 @@ export const AuthProvider = ({ children }) => {
       setUser(user);
       setUserState(user);
       setIsAuthenticated(true);
+      
+      // Fetch fresh user data from server to ensure we have all details
+      try {
+        const meResponse = await authAPI.getMe();
+        setUserState(meResponse.data);
+        setUser(meResponse.data);
+      } catch (meError) {
+        // If getMe fails, keep the user data from login response
+        console.warn('Failed to fetch user details after login:', meError);
+      }
       
       return { success: true };
     } catch (error) {
@@ -72,6 +95,16 @@ export const AuthProvider = ({ children }) => {
       setUserState(user);
       setIsAuthenticated(true);
       
+      // Fetch fresh user data from server to ensure we have all details
+      try {
+        const meResponse = await authAPI.getMe();
+        setUserState(meResponse.data);
+        setUser(meResponse.data);
+      } catch (meError) {
+        // If getMe fails, keep the user data from register response
+        console.warn('Failed to fetch user details after registration:', meError);
+      }
+      
       return { success: true };
     } catch (error) {
       console.error('Registration error:', error);
@@ -95,7 +128,17 @@ export const AuthProvider = ({ children }) => {
       setUserState(user);
       setIsAuthenticated(true);
       
-      return { success: true, user };
+      // Fetch fresh user data from server to ensure we have all details
+      try {
+        const meResponse = await authAPI.getMe();
+        setUserState(meResponse.data);
+        setUser(meResponse.data);
+        return { success: true, user: meResponse.data };
+      } catch (meError) {
+        // If getMe fails, keep the user data from Google login response
+        console.warn('Failed to fetch user details after Google login:', meError);
+        return { success: true, user };
+      }
     } catch (error) {
       console.error('Google login error:', error);
       const errorMessage = error.response?.data?.message || 

@@ -26,7 +26,9 @@ const Navbar = () => {
         <div className="navbar-menu">
           <Link to="/dashboard" className="navbar-link">Dashboard</Link>
           
-          {user?.role === USER_ROLES.ADMIN || user?.role === USER_ROLES.OWNER ? (
+          {(user?.role === USER_ROLES.ADMIN || 
+            user?.role === USER_ROLES.OWNER || 
+            user?.role === USER_ROLES.RESOLTER) ? (
             <Link to="/admin" className="navbar-link">Admin Panel</Link>
           ) : null}
           
@@ -40,6 +42,13 @@ const Navbar = () => {
           
           {user?.role === USER_ROLES.SCHOOL_TEACHER ? (
             <Link to="/school-teacher" className="navbar-link">Teacher Panel</Link>
+          ) : null}
+          
+          {(user?.role === USER_ROLES.ADMIN || 
+            user?.role === USER_ROLES.OWNER || 
+            user?.role === USER_ROLES.SCHOOL_ADMIN ||
+            user?.role === USER_ROLES.SCHOOL_TEACHER) ? (
+            <Link to="/monitoring" className="navbar-link">Real-Time Monitoring</Link>
           ) : null}
           
           <Link to="/results" className="navbar-link">Results</Link>

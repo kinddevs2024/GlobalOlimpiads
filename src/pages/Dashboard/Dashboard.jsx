@@ -156,15 +156,71 @@ const Dashboard = () => {
     setOlympiadDetails(null);
   };
 
+  // Helper function to get logo URL
+  const getLogoUrl = (logo) => {
+    if (!logo) return null;
+    // If it's already a full URL (starts with http), return as is
+    if (logo.startsWith("http://") || logo.startsWith("https://")) {
+      return logo;
+    }
+    // If it starts with /api, it's already correct for proxy
+    if (logo.startsWith("/api")) {
+      return logo;
+    }
+    // Otherwise, prepend /api if in dev mode, or construct full URL
+    const API_BASE_URL =
+      import.meta.env.VITE_API_URL ||
+      (import.meta.env.DEV ? "/api" : "http://localhost:3000/api");
+    return logo.startsWith("/")
+      ? `${API_BASE_URL}${logo}`
+      : `${API_BASE_URL}/${logo}`;
+  };
+
   // Render olympiad card component
   const renderOlympiadCard = (olympiad) => {
+    // Get logo URL - handle both relative and absolute URLs
+    // Check multiple possible field names for logo
+    const logoField =
+      olympiad.olympiadLogo ||
+      olympiad.logo ||
+      olympiad.photo ||
+      olympiad.image;
+    const logoUrl = getLogoUrl(logoField);
+
     const cardContent = (
       <>
         <div className="olympiad-card-header">
-          <h3 className="olympiad-title">{olympiad.title}</h3>
-          <div className="status-badges-container">
-            {getOlympiadStatusBadge(olympiad.status)}
-            {getTimeStatusBadge(olympiad)}
+          <div className="olympiad-logo-container">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={`${olympiad.title} logo`}
+                className="olympiad-logo"
+                onError={(e) => {
+                  // Show placeholder if image fails to load
+                  e.target.style.display = "none";
+                  const container = e.target.parentElement;
+                  if (
+                    container &&
+                    !container.querySelector(".logo-placeholder")
+                  ) {
+                    const placeholder = document.createElement("div");
+                    placeholder.className = "logo-placeholder";
+                    placeholder.textContent = "📋";
+                    container.appendChild(placeholder);
+                  }
+                }}
+              />
+            ) : (
+              <div className="logo-placeholder">📋</div>
+            )}
+          </div>
+          <div className="olympiad-header-content">
+            <h3 className="olympiad-title">{olympiad.title}</h3>
+            <div className="status-badges-container">
+              {getOlympiadStatusBadge(olympiad.status)}
+              {getTimeStatusBadge(olympiad)}
+            </div>
           </div>
         </div>
 
@@ -416,6 +472,25 @@ const Dashboard = () => {
                 </div>
               ) : (
                 <div className="modal-body">
+                  {/* Logo */}
+                  {(() => {
+                    const logoField =
+                      olympiadDetails?.olympiadLogo ||
+                      olympiadDetails?.logo ||
+                      olympiadDetails?.photo ||
+                      olympiadDetails?.image;
+                    const logoUrl = getLogoUrl(logoField);
+                    return logoUrl ? (
+                      <div className="modal-logo-container">
+                        <img
+                          src={logoUrl}
+                          alt={`${selectedOlympiad.title} logo`}
+                          className="modal-logo"
+                        />
+                      </div>
+                    ) : null;
+                  })()}
+
                   {/* Status Badges */}
                   <div className="modal-badges">
                     {getOlympiadStatusBadge(selectedOlympiad.status)}

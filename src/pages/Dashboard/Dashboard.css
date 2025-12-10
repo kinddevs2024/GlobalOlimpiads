@@ -82,17 +82,64 @@
 
 .olympiad-card-header {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 20px;
-  gap: 12px;
+  gap: 16px;
+}
+
+.olympiad-logo-container {
+  flex-shrink: 0;
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.olympiad-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.logo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+}
+
+.olympiad-header-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
 }
 
 .olympiad-title {
   font-size: 22px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.3;
   flex: 1;
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+
+.olympiad-card:hover .olympiad-title {
+  color: var(--accent);
+  text-shadow: 0 0 8px rgba(0, 255, 0, 0.3);
 }
 
 .status-badge {
@@ -284,7 +331,16 @@
   }
   
   .olympiad-card-header {
-    flex-direction: column;
+    flex-direction: row;
+  }
+
+  .olympiad-logo-container {
+    width: 60px;
+    height: 60px;
+  }
+
+  .logo-placeholder {
+    font-size: 24px;
   }
 
   .section-title {
@@ -376,11 +432,27 @@
   padding: 0 24px 24px;
 }
 
+.modal-logo-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.modal-logo {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 2px solid var(--border);
+  background: var(--bg-secondary);
+}
+
 .modal-badges {
   display: flex;
   gap: 8px;
   margin-bottom: 24px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .modal-section {

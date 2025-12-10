@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { olympiadAPI } from '../services/api';
 import { VIDEO_WIDTH, VIDEO_HEIGHT, API_BASE_URL, CAMERA_CAPTURE_INTERVAL } from '../utils/constants';
 import { generateVideoFilename, generateExitScreenshotFilename } from '../utils/helpers';
+import { useSocket } from '../context/SocketContext';
 import './ProctoringMonitor.css';
 
-const ProctoringMonitor = ({ olympiadId, userId, olympiadTitle, onRecordingStatusChange }) => {
+const ProctoringMonitor = forwardRef(({ olympiadId, userId, olympiadTitle, onRecordingStatusChange }, ref) => {
+  const { socket, connected, emit } = useSocket();
   const cameraVideoRef = useRef(null);
   const screenVideoRef = useRef(null);
   
@@ -28,6 +30,18 @@ const ProctoringMonitor = ({ olympiadId, userId, olympiadTitle, onRecordingStatu
   const canvasRef = useRef(null);
   const realTimeCaptureIntervalRef = useRef(null);
   const captureCanvasRef = useRef(null);
+  const stopRecordingRef = useRef(null);
+
+  // Expose stopRecording function to parent via ref
+  useImperativeHandle(ref, () => ({
+    stopRecording: () => {
+      if (stopRecordingRef.current) {
+        return stopRecordingRef.current();
+      }
+    },
+    isRecording: isRecording,
+    isUploading: isUploading,
+  }));
 
   // Function to capture last frame from video element synchronously
   const captureLastFrameSync = (videoElement, type) => {
@@ -476,21 +490,43 @@ const ProctoringMonitor = ({ olympiadId, userId, olympiadTitle, onRecordingStatu
 
         // Capture camera frame
         let cameraDataURL = null;
+        let cameraBase64 = null;
         if (cameraVideoRef.current && cameraVideoRef.current.readyState >= 2) {
           ctx.drawImage(cameraVideoRef.current, 0, 0, canvas.width, canvas.height);
           cameraDataURL = canvas.toDataURL('image/jpeg', 0.7);
+          // Extract base64 part (remove data:image/jpeg;base64, prefix)
+          cameraBase64 = cameraDataURL.split(',')[1];
         }
 
         // Capture screen frame
         let screenDataURL = null;
+        let screenBase64 = null;
         if (screenVideoRef.current && screenVideoRef.current.readyState >= 2) {
           ctx.drawImage(screenVideoRef.current, 0, 0, canvas.width, canvas.height);
           screenDataURL = canvas.toDataURL('image/jpeg', 0.7);
+          // Extract base64 part (remove data:image/jpeg;base64, prefix)
+          screenBase64 = screenDataURL.split(',')[1];
         }
 
         if (!cameraDataURL && !screenDataURL) return;
 
-        // Convert data URLs to blobs
+        // Stream via WebSocket for real-time monitoring (if connected)
+        if (connected && socket && (cameraBase64 || screenBase64)) {
+          try {
+            emit('stream-video-frame', {
+              olympiadId: olympiadId,
+              userId: userId,
+              cameraFrame: cameraBase64,
+              screenFrame: screenBase64,
+              timestamp: new Date().toISOString(),
+            });
+          } catch (wsError) {
+            // Silently fail WebSocket streaming - don't interrupt user experience
+            console.error('Error streaming via WebSocket:', wsError);
+          }
+        }
+
+        // Also send to backend for storage (fire and forget - don't wait for response)
         const formData = new FormData();
         formData.append('olympiadId', olympiadId);
         formData.append('timestamp', new Date().toISOString());
@@ -505,19 +541,9 @@ const ProctoringMonitor = ({ olympiadId, userId, olympiadTitle, onRecordingStatu
           formData.append('screenImage', screenBlob, 'screen.jpg');
         }
 
-        // Get token from localStorage
-        const token = localStorage.getItem('token');
-        if (!token) return;
-
-        // Send to backend (fire and forget - don't wait for response)
-        fetch(`${API_BASE_URL}/olympiads/real-time-capture`, {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
-          keepalive: true
-        }).catch(error => {
+        // Send to backend using API service (fire and forget - don't wait for response)
+        olympiadAPI.uploadRealTimeCapture(formData).catch(error => {
+          // Silently fail - don't interrupt user experience
           console.error('Error sending real-time capture:', error);
         });
 
@@ -538,7 +564,11 @@ const ProctoringMonitor = ({ olympiadId, userId, olympiadTitle, onRecordingStatu
       return new Blob([ab], { type: mimeString });
     };
 
-    const stopRecording = () => {
+    const stopRecording = async () => {
+      if (!isRecording) {
+        return Promise.resolve(); // Already stopped
+      }
+
       setIsRecording(false);
       
       // Stop real-time capture sending
@@ -563,10 +593,21 @@ const ProctoringMonitor = ({ olympiadId, userId, olympiadTitle, onRecordingStatu
       }
 
       // Wait a bit for recording to finalize, then upload
-      setTimeout(() => {
-        handleRecordingComplete();
-      }, 1000);
+      return new Promise((resolve) => {
+        setTimeout(async () => {
+          try {
+            await handleRecordingComplete();
+            resolve();
+          } catch (error) {
+            console.error('Error in handleRecordingComplete:', error);
+            resolve(); // Resolve anyway to not block submission
+          }
+        }, 1000);
+      });
     };
+
+    // Store stopRecording in ref so it can be accessed by useImperativeHandle
+    stopRecordingRef.current = stopRecording;
 
     const handleRecordingComplete = async () => {
       setIsUploading(true);
@@ -598,13 +639,15 @@ const ProctoringMonitor = ({ olympiadId, userId, olympiadTitle, onRecordingStatu
       } catch (error) {
         console.error('Error uploading videos:', error);
         setUploadStatus('Upload failed');
-        alert('Failed to upload videos. Please check your connection and try again.');
+        // Don't show alert if component is unmounting
+        if (document.body.contains(document.querySelector('.proctoring-monitor'))) {
+          alert('Failed to upload videos. Please check your connection and try again.');
+        }
+        throw error; // Re-throw so caller knows upload failed
       } finally {
-        setTimeout(() => {
-          setIsUploading(false);
-          setUploadProgress({ camera: 0, screen: 0 });
-          setUploadStatus('');
-        }, 2000);
+        setIsUploading(false);
+        setUploadProgress({ camera: 0, screen: 0 });
+        setUploadStatus('');
       }
     };
 
@@ -808,6 +851,8 @@ const ProctoringMonitor = ({ olympiadId, userId, olympiadTitle, onRecordingStatu
       </div>
     </div>
   );
-};
+});
+
+ProctoringMonitor.displayName = 'ProctoringMonitor';
 
 export default ProctoringMonitor;

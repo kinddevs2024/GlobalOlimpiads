@@ -23,16 +23,8 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   }
 
   if (requiredRole) {
-    const roleHierarchy = {
-      [USER_ROLES.STUDENT]: 1,
-      [USER_ROLES.ADMIN]: 2,
-      [USER_ROLES.OWNER]: 3
-    };
-
-    const userRoleLevel = roleHierarchy[user.role] || 0;
-    const requiredRoleLevel = roleHierarchy[requiredRole] || 0;
-
-    if (userRoleLevel < requiredRoleLevel) {
+    // Check if user has the exact required role
+    if (user.role !== requiredRole) {
       return <Navigate to="/dashboard" replace />;
     }
   }

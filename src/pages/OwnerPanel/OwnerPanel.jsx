@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { ownerAPI, adminAPI } from "../services/api";
-import NotificationToast from "../components/NotificationToast";
+import { ownerAPI, adminAPI } from "../../services/api";
+import NotificationToast from "../../components/NotificationToast";
 import {
   isOlympiadActive,
   isOlympiadUpcoming,
   isOlympiadEnded,
-} from "../utils/helpers";
+} from "../../utils/helpers";
 import "./OwnerPanel.css";
 
 const OwnerPanel = () => {
@@ -27,15 +27,21 @@ const OwnerPanel = () => {
           ownerAPI.getAnalytics(),
           adminAPI.getUsers(),
           adminAPI.getAllOlympiads(),
-          adminAPI.getSubmissions(),
+          adminAPI.getSubmissions(null, null),
         ]);
       setAnalytics(analyticsRes.data);
-      setUsers(usersRes.data || []);
-      setOlympiads(olympiadsRes.data || []);
-      setSubmissions(submissionsRes.data || []);
+      setUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
+      setOlympiads(Array.isArray(olympiadsRes.data) ? olympiadsRes.data : []);
+      // Ensure submissions is always an array
+      const submissionsData = submissionsRes.data;
+      setSubmissions(Array.isArray(submissionsData) ? submissionsData : []);
     } catch (error) {
       console.error("Error fetching data:", error);
       setNotification({ message: "Failed to load data", type: "error" });
+      // Ensure arrays are set to empty arrays on error
+      setUsers([]);
+      setOlympiads([]);
+      setSubmissions([]);
     } finally {
       setLoading(false);
     }
@@ -105,7 +111,9 @@ const OwnerPanel = () => {
                 {submissions.length || analytics?.totalSubmissions || 0}
               </div>
               <div className="analytics-change">
-                {new Set(submissions.map((s) => s.userId || s.user?._id)).size}{" "}
+                {Array.isArray(submissions) && submissions.length > 0
+                  ? new Set(submissions.map((s) => s.userId || s.user?._id)).size
+                  : 0}{" "}
                 participants
               </div>
             </div>
@@ -357,16 +365,18 @@ const OwnerPanel = () => {
               <div className="stat-content">
                 <div className="stat-metric">
                   <div className="metric-value">
-                    {
-                      new Set(submissions.map((s) => s.userId || s.user?._id))
-                        .size
-                    }
+                    {Array.isArray(submissions) && submissions.length > 0
+                      ? new Set(submissions.map((s) => s.userId || s.user?._id))
+                          .size
+                      : 0}
                   </div>
                   <div className="metric-label">Unique Participants</div>
                 </div>
                 <div className="stat-metric">
                   <div className="metric-value">
-                    {olympiads.length > 0
+                    {Array.isArray(submissions) &&
+                    Array.isArray(olympiads) &&
+                    olympiads.length > 0
                       ? (submissions.length / olympiads.length).toFixed(1)
                       : "0"}
                   </div>
@@ -376,7 +386,8 @@ const OwnerPanel = () => {
                 </div>
                 <div className="stat-metric">
                   <div className="metric-value">
-                    {users.filter((u) => u.role === "student").length > 0
+                    {Array.isArray(submissions) &&
+                    users.filter((u) => u.role === "student").length > 0
                       ? (
                           (new Set(
                             submissions.map((s) => s.userId || s.user?._id)

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { adminAPI, olympiadAPI } from "../services/api";
-import NotificationToast from "../components/NotificationToast";
-import { formatDate } from "../utils/helpers";
+import { adminAPI, olympiadAPI } from "../../services/api";
+import NotificationToast from "../../components/NotificationToast";
+import { formatDate } from "../../utils/helpers";
 import "./AdminPanel.css";
 
 // Question Form Component for Step 3
@@ -217,6 +217,7 @@ const AdminPanel = () => {
     endTime: "",
     duration: 60, // in minutes - will convert to seconds
     status: "draft", // draft, published, unpublished
+    olympiadLogo: null, // Logo file
   });
 
   const [statusFilter, setStatusFilter] = useState("all"); // all, published, unpublished, draft
@@ -255,17 +256,31 @@ const AdminPanel = () => {
         return new Date(dateTimeLocal).toISOString();
       };
 
-      // Prepare data for backend
-      const olympiadData = {
-        title: formData.title,
-        description: formData.description,
-        type: formData.type,
-        subject: formData.subject,
-        startTime: formatDateTime(formData.startTime),
-        endTime: formatDateTime(formData.endTime),
-        duration: formData.duration * 60, // Convert minutes to seconds
-        status: formData.status,
-      };
+      // Prepare data for backend - use FormData if logo exists
+      let olympiadData;
+      if (formData.olympiadLogo) {
+        olympiadData = new FormData();
+        olympiadData.append("title", formData.title);
+        olympiadData.append("description", formData.description);
+        olympiadData.append("type", formData.type);
+        olympiadData.append("subject", formData.subject);
+        olympiadData.append("startTime", formatDateTime(formData.startTime));
+        olympiadData.append("endTime", formatDateTime(formData.endTime));
+        olympiadData.append("duration", formData.duration * 60);
+        olympiadData.append("status", formData.status);
+        olympiadData.append("olympiadLogo", formData.olympiadLogo);
+      } else {
+        olympiadData = {
+          title: formData.title,
+          description: formData.description,
+          type: formData.type,
+          subject: formData.subject,
+          startTime: formatDateTime(formData.startTime),
+          endTime: formatDateTime(formData.endTime),
+          duration: formData.duration * 60, // Convert minutes to seconds
+          status: formData.status,
+        };
+      }
 
       const response = await adminAPI.createOlympiad(olympiadData);
       setCreatedOlympiadId(response.data._id);
@@ -320,6 +335,7 @@ const AdminPanel = () => {
       endTime: "",
       duration: 60,
       status: "draft",
+      olympiadLogo: null,
     });
     fetchOlympiads();
     setNotification({
@@ -344,6 +360,7 @@ const AdminPanel = () => {
       endTime: "",
       duration: 60,
       status: "draft",
+      olympiadLogo: null,
     });
   };
 
@@ -375,6 +392,7 @@ const AdminPanel = () => {
         endTime: formatToLocalDateTime(olympiadData.endTime),
         duration: Math.floor((olympiadData.duration || 3600) / 60), // Convert seconds to minutes
         status: olympiadData.status || "draft",
+        olympiadLogo: null, // Logo will be loaded from backend URL if exists
       });
       setShowCreateForm(true);
       setCurrentStep(2); // Skip type selection for editing
@@ -392,16 +410,30 @@ const AdminPanel = () => {
         return new Date(dateTimeLocal).toISOString();
       };
 
-      const olympiadData = {
-        title: formData.title,
-        description: formData.description,
-        type: formData.type,
-        subject: formData.subject,
-        startTime: formatDateTime(formData.startTime),
-        endTime: formatDateTime(formData.endTime),
-        duration: formData.duration * 60,
-        status: formData.status,
-      };
+      let olympiadData;
+      if (formData.olympiadLogo) {
+        olympiadData = new FormData();
+        olympiadData.append("title", formData.title);
+        olympiadData.append("description", formData.description);
+        olympiadData.append("type", formData.type);
+        olympiadData.append("subject", formData.subject);
+        olympiadData.append("startTime", formatDateTime(formData.startTime));
+        olympiadData.append("endTime", formatDateTime(formData.endTime));
+        olympiadData.append("duration", formData.duration * 60);
+        olympiadData.append("status", formData.status);
+        olympiadData.append("olympiadLogo", formData.olympiadLogo);
+      } else {
+        olympiadData = {
+          title: formData.title,
+          description: formData.description,
+          type: formData.type,
+          subject: formData.subject,
+          startTime: formatDateTime(formData.startTime),
+          endTime: formatDateTime(formData.endTime),
+          duration: formData.duration * 60,
+          status: formData.status,
+        };
+      }
 
       await adminAPI.updateOlympiad(editingOlympiad, olympiadData);
       setNotification({
@@ -718,6 +750,41 @@ const AdminPanel = () => {
                         rows="3"
                         required
                       />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group" style={{ width: "100%" }}>
+                      <label>Olympiad Logo</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            olympiadLogo: e.target.files[0] || null,
+                          })
+                        }
+                        className="file-input"
+                      />
+                      {formData.olympiadLogo && (
+                        <div
+                          className="file-preview"
+                          style={{ marginTop: "12px" }}
+                        >
+                          <img
+                            src={URL.createObjectURL(formData.olympiadLogo)}
+                            alt="Logo preview"
+                            style={{
+                              maxWidth: "200px",
+                              maxHeight: "200px",
+                              borderRadius: "8px",
+                              border: "2px solid var(--border)",
+                              objectFit: "cover",
+                            }}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
 

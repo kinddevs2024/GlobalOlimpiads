@@ -23,6 +23,8 @@
   display: flex;
   gap: 12px;
   align-items: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .status-filter {
@@ -34,6 +36,8 @@
   font-size: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .status-filter:focus {
@@ -78,17 +82,17 @@
 }
 
 .admin-olympiads {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
 }
 
 .admin-olympiad-card {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
   padding: 24px;
   animation: fadeIn 0.5s ease;
+  gap: 16px;
 }
 
 .olympiad-title-row {
@@ -96,6 +100,10 @@
   align-items: center;
   gap: 12px;
   margin-bottom: 8px;
+}
+
+.olympiad-info {
+  flex: 1;
 }
 
 .olympiad-info h3 {
@@ -140,13 +148,38 @@
 .olympiad-actions {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
+  margin-top: auto;
 }
 
 @media (max-width: 768px) {
   .admin-header {
-    flex-direction: column;
-    gap: 20px;
-    align-items: stretch;
+    flex-direction: row;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  
+  .admin-title {
+    font-size: 32px;
+    flex: 1;
+    min-width: 200px;
+  }
+  
+  .admin-header-actions {
+    flex: 1;
+    min-width: 200px;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+  }
+  
+  .status-filter {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+  
+  .admin-olympiads {
+    grid-template-columns: 1fr;
   }
   
   .admin-olympiad-card {
@@ -157,10 +190,11 @@
   
   .olympiad-actions {
     width: 100%;
+    flex-direction: column;
   }
   
   .olympiad-actions button {
-    flex: 1;
+    width: 100%;
   }
 }
 

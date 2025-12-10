@@ -9,6 +9,9 @@ export const USER_ROLES = {
   STUDENT: "student",
   ADMIN: "admin",
   OWNER: "owner",
+  RESOLTER: "resolter", // Can edit and set results of essays and view all results
+  SCHOOL_ADMIN: "school_admin", // School administrator
+  SCHOOL_TEACHER: "school_teacher", // School teacher - can view results and real-time captures from their school
 };
 
 export const OLYMPIAD_TYPES = {

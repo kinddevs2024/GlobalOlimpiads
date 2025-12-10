@@ -1,29 +1,45 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { olympiadAPI } from "../services/api";
+import { olympiadAPI } from "../../services/api";
 import {
   formatDate,
   isOlympiadActive,
   isOlympiadUpcoming,
   isOlympiadEnded,
   getTimeRemaining,
-} from "../utils/helpers";
-import NotificationToast from "../components/NotificationToast";
+  isProfileComplete,
+  getMissingProfileFields,
+} from "../../utils/helpers";
+import { useAuth } from "../../context/AuthContext";
+import { USER_ROLES } from "../../utils/constants";
+import NotificationToast from "../../components/NotificationToast";
 import "./StartOlympiad.css";
 
 const StartOlympiad = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [olympiad, setOlympiad] = useState(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [notification, setNotification] = useState(null);
   const [consentGiven, setConsentGiven] = useState(false);
   const [timeUntilStart, setTimeUntilStart] = useState(0);
+  const [profileIncomplete, setProfileIncomplete] = useState(false);
+  const [missingFields, setMissingFields] = useState([]);
 
   useEffect(() => {
     fetchOlympiad();
-  }, [id]);
+    
+    // Check profile completeness for students
+    if (user && user.role === USER_ROLES.STUDENT) {
+      const complete = isProfileComplete(user);
+      setProfileIncomplete(!complete);
+      if (!complete) {
+        setMissingFields(getMissingProfileFields(user));
+      }
+    }
+  }, [id, user]);
 
   useEffect(() => {
     if (olympiad && isOlympiadUpcoming(olympiad.startTime)) {
@@ -88,6 +104,19 @@ const StartOlympiad = () => {
         type: "error",
       });
       return;
+    }
+
+    // Check profile completeness for students
+    if (user && user.role === USER_ROLES.STUDENT) {
+      const complete = isProfileComplete(user);
+      if (!complete) {
+        const missing = getMissingProfileFields(user);
+        setNotification({
+          message: `Please complete your profile before starting. Missing: ${missing.join(', ')}`,
+          type: "error",
+        });
+        return;
+      }
     }
 
     setStarting(true);
@@ -275,6 +304,27 @@ const StartOlympiad = () => {
             </div>
           </div>
 
+          {/* Profile Incomplete Warning for Students */}
+          {user && user.role === USER_ROLES.STUDENT && profileIncomplete && (
+            <div className="status-message card status-error">
+              <div className="status-icon">⚠️</div>
+              <div className="status-content">
+                <h3>Profile Incomplete</h3>
+                <p>
+                  Please complete your profile before starting an olympiad. Missing fields:
+                </p>
+                <ul style={{ marginTop: '12px', marginBottom: '16px', paddingLeft: '20px' }}>
+                  {missingFields.map((field, index) => (
+                    <li key={index} style={{ marginBottom: '4px' }}>{field}</li>
+                  ))}
+                </ul>
+                <Link to="/profile/edit" className="button-primary">
+                  Complete Profile
+                </Link>
+              </div>
+            </div>
+          )}
+
           {/* Status Messages */}
           {isUpcoming && (
             <div className="status-message card status-warning">
@@ -439,8 +489,8 @@ const StartOlympiad = () => {
                   type="button"
                   className="button-primary start-button"
                   onClick={handleStart}
-                  disabled={!consentGiven || starting || !isActive}
-                  aria-disabled={!consentGiven || starting || !isActive}
+                  disabled={!consentGiven || starting || !isActive || (user && user.role === USER_ROLES.STUDENT && profileIncomplete)}
+                  aria-disabled={!consentGiven || starting || !isActive || (user && user.role === USER_ROLES.STUDENT && profileIncomplete)}
                 >
                   {starting
                     ? "Starting..."
